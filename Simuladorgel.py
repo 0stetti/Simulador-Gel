@@ -1,5 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
+import math # <--- CORREÇÃO: Importado no início
 from Bio.Seq import Seq
 from Bio.Restriction import RestrictionBatch, Analysis, CommOnly
 from io import StringIO
@@ -80,8 +81,8 @@ with st.sidebar:
 
 dados_para_plotar = []
 labels_eixo_x = []
-nomes_ladders = [] # Para saber qual ladder usar na logica visual
-detalhes_hover = [] # Para guardar infos extras (ex: enzima usada)
+nomes_ladders = [] 
+detalhes_hover = [] 
 
 cols = st.columns(2)
 
@@ -134,12 +135,10 @@ for i in range(num_pocos):
 st.divider()
 
 if any(dados_para_plotar):
-    # Cores (Plotly usa strings CSS/Hex)
     bg_color = 'white' if inverter_cores else '#1e1e1e'
     line_color = 'black' if inverter_cores else 'white'
     text_color = 'black' if inverter_cores else 'white'
     
-    # Cria a figura interativa
     fig = go.Figure()
 
     for i, bandas in enumerate(dados_para_plotar):
@@ -147,7 +146,6 @@ if any(dados_para_plotar):
         eh_ladder = (labels_eixo_x[i] == "M")
         ladder_name = nomes_ladders[i]
         
-        # Massa total para cálculo de intensidade
         massa_total = sum(bandas) if bandas and not eh_ladder else 1
         
         for tam in bandas:
@@ -156,7 +154,7 @@ if any(dados_para_plotar):
             opacity = 0.8
             
             if eh_ladder:
-                # Destaque para bandas de referência do ladder
+                # Destaque para bandas de referência
                 if tam in [3000, 1000, 500]: 
                     width = 4
                     opacity = 1.0
@@ -169,11 +167,10 @@ if any(dados_para_plotar):
             else:
                 # Física: Intensidade baseada na massa
                 fracao_massa = tam / massa_total
-                width = 2 + (6 * fracao_massa) # Plotly lines são mais finas, aumentei o fator
+                width = 2 + (6 * fracao_massa) 
                 opacity = 0.5 + (0.5 * fracao_massa)
 
             # --- DESENHO DA BANDA ---
-            # No Plotly, desenhamos uma linha horizontal curta
             fig.add_trace(go.Scatter(
                 x=[x_center - 0.35, x_center + 0.35],
                 y=[tam, tam],
@@ -182,17 +179,15 @@ if any(dados_para_plotar):
                 opacity=opacity,
                 name=f"Poço {labels_eixo_x[i]}",
                 showlegend=False,
-                hoverinfo='text', # Apenas mostra nosso texto customizado
-                # HTML no tooltip para ficar bonito
+                hoverinfo='text',
                 hovertext=f"<b>Tamanho:</b> {tam} pb<br><b>Poço:</b> {labels_eixo_x[i]}<br>{detalhes_hover[i]}"
             ))
 
             # --- RÓTULOS LATERAIS DO LADDER ---
             if eh_ladder:
-                # Adiciona texto diretamente no gráfico (Annotation)
                 fig.add_annotation(
                     x=x_center - 0.5,
-                    y=math.log10(tam) if tam > 0 else 0, # Plotly annotations em log precisam de ajuste as vezes, mas yref='y' resolve
+                    y=tam, # CORREÇÃO: Valor direto, Plotly lida com o log
                     text=f"{tam}",
                     showarrow=False,
                     xanchor="right",
@@ -225,21 +220,19 @@ if any(dados_para_plotar):
         ),
         yaxis=dict(
             type='log',
-            range=[math.log10(80), math.log10(20000)], # Invertido: log10(min) -> log10(max). Plotly log axis funciona diferente.
-            # CORREÇÃO: Plotly inverte se passarmos range [max, min] em log?
-            # Vamos testar range [log(20000), log(80)] para ver se inverte.
-            # Se não, usamos autorange='reversed'.
-            autorange="reversed", 
+            # Definimos o range explicitamente invertido: log(max) em cima, log(min) em baixo?
+            # Plotly log axis é meio chato. Geralmente [log10(max), log10(min)] inverte.
+            range=[math.log10(20000), math.log10(80)], 
             showgrid=False,
             zeroline=False,
             title="pb",
             titlefont=dict(color=text_color, size=14),
             tickfont=dict(color=text_color),
-            showticklabels=False # Já temos os labels do ladder
+            showticklabels=False 
         )
     )
     
-    # Ajuste fino para o título do eixo Y ficar no topo
+    # Label "pb" no topo
     fig.add_annotation(
         x=-0.05, y=1, xref="paper", yref="paper",
         text="pb", showarrow=False,
@@ -250,6 +243,3 @@ if any(dados_para_plotar):
 
 else:
     st.info("Adicione amostras para gerar o gel.")
-
-# Import necessário para cálculos de log no layout
-import math
