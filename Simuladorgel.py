@@ -1,17 +1,17 @@
 import streamlit as st
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 from Bio.Seq import Seq
 from Bio.Restriction import RestrictionBatch, Analysis, CommOnly
 from io import StringIO
 from Bio import SeqIO
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="Simulador de Gel Corrigido", layout="wide", page_icon="🧬")
+st.set_page_config(page_title="Simulador de Gel Interativo", layout="wide", page_icon="🧬")
 
 # Carrega TODAS as enzimas comerciais
 TODAS_ENZIMAS = sorted(list(CommOnly))
 
-# Dados de Ladders (Marcadores)
+# Dados de Ladders
 LADDERS = {
     "1kb Plus DNA Ladder": [100, 200, 300, 400, 500, 650, 850, 1000, 1650, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 12000],
     "1kb DNA Ladder (Genérico)": [250, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 8000, 10000],
@@ -38,21 +38,17 @@ def processar_fasta(input_data, is_file=False):
 
 def calcular_digestao(sequencia, enzimas, eh_circular):
     if not sequencia: return []
-    
     seq_obj = Seq(sequencia)
     tamanho_total = len(seq_obj)
     
-    if not enzimas:
-        return [tamanho_total]
+    if not enzimas: return [tamanho_total]
     
     rb = RestrictionBatch(enzimas)
     analise = Analysis(rb, seq_obj, linear=not eh_circular)
-    
     cortes = analise.full()
     locais = sorted(list(set([local for lista in cortes.values() for local in lista])))
     
-    if not locais:
-        return [tamanho_total]
+    if not locais: return [tamanho_total]
         
     fragmentos = []
     if not eh_circular:
@@ -72,19 +68,20 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
     return sorted(fragmentos, reverse=True)
 
 # --- INTERFACE ---
-st.title("🧪 Simulador de Eletroforese (Física Real)")
-st.markdown("Simulação com conservação de massa: fragmentos maiores são mais brilhantes.")
+st.title("🧪 Simulador de Eletroforese Interativo")
+st.markdown("Passe o mouse sobre as bandas para ver o tamanho exato em pares de base (pb).")
 
 with st.sidebar:
     st.header("Configurações")
     num_pocos = st.slider("Número de Poços", 1, 15, 10)
     st.divider()
     inverter_cores = st.toggle("Inverter Cores (Modo Impressão)", value=False)
-    st.caption("Nota: No modo escuro, bandas grossas simulam maior massa de DNA.")
+    st.caption("Nota: A espessura da banda indica a massa relativa de DNA.")
 
 dados_para_plotar = []
 labels_eixo_x = []
-ladder_names_used = []
+nomes_ladders = [] # Para saber qual ladder usar na logica visual
+detalhes_hover = [] # Para guardar infos extras (ex: enzima usada)
 
 cols = st.columns(2)
 
@@ -98,16 +95,16 @@ for i in range(num_pocos):
                 lad = st.selectbox("Ladder:", list(LADDERS.keys()), key=f"l_{i}")
                 dados_para_plotar.append(LADDERS[lad])
                 labels_eixo_x.append("M")
-                ladder_names_used.append(lad)
+                nomes_ladders.append(lad)
+                detalhes_hover.append(lad)
             else:
-                ladder_names_used.append(None)
+                nomes_ladders.append(None)
                 tab_f, tab_t = st.tabs(["Arquivo", "Texto"])
                 seq, nome = "", f"{i+1}"
                 
                 with tab_f:
                     up = st.file_uploader("FASTA", key=f"u_{i}")
-                    if up: 
-                        nome, seq = processar_fasta(up, True)
+                    if up: nome, seq = processar_fasta(up, True)
                 with tab_t:
                     txt = st.text_area("Seq", height=70, key=f"tx_{i}")
                     if txt and not seq: 
@@ -119,6 +116,9 @@ for i in range(num_pocos):
                 circ = c1.checkbox("Circular?", True, key=f"c_{i}")
                 enz = c2.multiselect("Enzimas", TODAS_ENZIMAS, key=f"e_{i}")
                 
+                info_texto = f"Circular: {circ}<br>Enzimas: {', '.join(enz) if enz else 'Nenhuma'}"
+                detalhes_hover.append(info_texto)
+
                 if seq:
                     try:
                         res = calcular_digestao(seq, enz, circ)
@@ -134,71 +134,122 @@ for i in range(num_pocos):
 st.divider()
 
 if any(dados_para_plotar):
-    # Cores
-    bg = 'white' if inverter_cores else '#1e1e1e'
-    band_color = 'black' if inverter_cores else 'white'
+    # Cores (Plotly usa strings CSS/Hex)
+    bg_color = 'white' if inverter_cores else '#1e1e1e'
+    line_color = 'black' if inverter_cores else 'white'
     text_color = 'black' if inverter_cores else 'white'
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.set_facecolor(bg)
-    fig.patch.set_facecolor(bg)
     
-    for spine in ax.spines.values(): spine.set_visible(False)
+    # Cria a figura interativa
+    fig = go.Figure()
 
     for i, bandas in enumerate(dados_para_plotar):
-        x = i + 1
+        x_center = i + 1
         eh_ladder = (labels_eixo_x[i] == "M")
-        ladder_name = ladder_names_used[i]
+        ladder_name = nomes_ladders[i]
         
-        # Se for amostra, precisamos calcular a massa total para a proporção
+        # Massa total para cálculo de intensidade
         massa_total = sum(bandas) if bandas and not eh_ladder else 1
         
         for tam in bandas:
-            # LÓGICA DE ESPESSURA (INTENSIDADE)
-            lw = 2.0
-            alpha = 0.8
+            # --- LÓGICA DE ESPESSURA E OPACIDADE ---
+            width = 2
+            opacity = 0.8
             
             if eh_ladder:
-                # Lógica para Ladders (Bandas de Referência Fixas)
+                # Destaque para bandas de referência do ladder
                 if tam in [3000, 1000, 500]: 
-                    lw = 4.0
-                    alpha = 1.0
+                    width = 4
+                    opacity = 1.0
                 elif tam >= 5000:
-                    lw = 2.5
-                    alpha = 0.9
+                    width = 3
+                    opacity = 0.9
                 else:
-                    lw = 1.5
-                    alpha = 0.7
+                    width = 1.5
+                    opacity = 0.7
             else:
-                # LÓGICA DE AMOSTRA (Massa Proporcional)
+                # Física: Intensidade baseada na massa
                 fracao_massa = tam / massa_total
-                lw = 1.5 + (4.5 * fracao_massa) 
-                alpha = 0.6 + (0.4 * fracao_massa)
+                width = 2 + (6 * fracao_massa) # Plotly lines são mais finas, aumentei o fator
+                opacity = 0.5 + (0.5 * fracao_massa)
 
-            ax.hlines(y=tam, xmin=x-0.35, xmax=x+0.35, colors=band_color, linewidth=lw, alpha=alpha)
-            
-            # Rótulos do Ladder
+            # --- DESENHO DA BANDA ---
+            # No Plotly, desenhamos uma linha horizontal curta
+            fig.add_trace(go.Scatter(
+                x=[x_center - 0.35, x_center + 0.35],
+                y=[tam, tam],
+                mode='lines',
+                line=dict(color=line_color, width=width),
+                opacity=opacity,
+                name=f"Poço {labels_eixo_x[i]}",
+                showlegend=False,
+                hoverinfo='text', # Apenas mostra nosso texto customizado
+                # HTML no tooltip para ficar bonito
+                hovertext=f"<b>Tamanho:</b> {tam} pb<br><b>Poço:</b> {labels_eixo_x[i]}<br>{detalhes_hover[i]}"
+            ))
+
+            # --- RÓTULOS LATERAIS DO LADDER ---
             if eh_ladder:
-                ax.text(x-0.5, tam, f"{tam}", color=text_color, fontsize=8, ha='right', va='center')
-                ax.hlines(y=tam, xmin=x-0.5, xmax=x-0.35, colors=text_color, linewidth=0.5, alpha=0.3)
+                # Adiciona texto diretamente no gráfico (Annotation)
+                fig.add_annotation(
+                    x=x_center - 0.5,
+                    y=math.log10(tam) if tam > 0 else 0, # Plotly annotations em log precisam de ajuste as vezes, mas yref='y' resolve
+                    text=f"{tam}",
+                    showarrow=False,
+                    xanchor="right",
+                    font=dict(color=text_color, size=9),
+                    yshift=0
+                )
+                # Linha guia fina
+                fig.add_shape(
+                    type="line",
+                    x0=x_center - 0.5, x1=x_center - 0.35,
+                    y0=tam, y1=tam,
+                    line=dict(color=text_color, width=0.5),
+                    opacity=0.3
+                )
 
-    # Eixos
-    ax.set_yscale('log')
-    # AQUI ESTAVA O ERRO: Inverti a ordem para (menor, maior)
-    # No plot logarítmico padrão, menor fica em baixo, maior em cima.
-    ax.set_ylim(80, 20000) 
+    # --- CONFIGURAÇÃO DOS EIXOS E LAYOUT ---
+    fig.update_layout(
+        plot_bgcolor=bg_color,
+        paper_bgcolor=bg_color,
+        height=600,
+        margin=dict(t=30, b=30, l=60, r=30),
+        xaxis=dict(
+            tickmode='array',
+            tickvals=list(range(1, num_pocos + 1)),
+            ticktext=labels_eixo_x,
+            tickfont=dict(color=text_color, size=14, family='Arial Black'),
+            showgrid=False,
+            zeroline=False,
+            range=[0.5, num_pocos + 0.5]
+        ),
+        yaxis=dict(
+            type='log',
+            range=[math.log10(80), math.log10(20000)], # Invertido: log10(min) -> log10(max). Plotly log axis funciona diferente.
+            # CORREÇÃO: Plotly inverte se passarmos range [max, min] em log?
+            # Vamos testar range [log(20000), log(80)] para ver se inverte.
+            # Se não, usamos autorange='reversed'.
+            autorange="reversed", 
+            showgrid=False,
+            zeroline=False,
+            title="pb",
+            titlefont=dict(color=text_color, size=14),
+            tickfont=dict(color=text_color),
+            showticklabels=False # Já temos os labels do ladder
+        )
+    )
     
-    ax.set_xticks(range(1, num_pocos + 1))
-    ax.set_xticklabels(labels_eixo_x, color=text_color, fontsize=11, weight='bold')
-    
-    # Label "pb" no topo
-    ax.set_ylabel("pb", color=text_color, fontsize=12, weight='bold', rotation=0, ha='right')
-    ax.yaxis.set_label_coords(-0.06, 0.96)
-    
-    ax.set_yticks([])
-    ax.set_yticklabels([])
-    ax.tick_params(axis='x', colors=text_color)
-    
-    st.pyplot(fig)
+    # Ajuste fino para o título do eixo Y ficar no topo
+    fig.add_annotation(
+        x=-0.05, y=1, xref="paper", yref="paper",
+        text="pb", showarrow=False,
+        font=dict(color=text_color, size=14, family="Arial Black")
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
 else:
-    st.info("Adicione amostras ou ladders para visualizar.")
+    st.info("Adicione amostras para gerar o gel.")
+
+# Import necessário para cálculos de log no layout
+import math
