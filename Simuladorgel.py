@@ -21,10 +21,7 @@ LADDERS = {
 }
 
 def processar_upload(input_data):
-    """
-    Lê arquivos FASTA (.fasta, .txt) ou SnapGene (.dna).
-    Retorna: (Nome, Sequencia)
-    """
+    """Lê arquivos FASTA (.fasta, .txt) ou SnapGene (.dna)."""
     try:
         nome_arquivo = input_data.name.lower()
         
@@ -36,7 +33,7 @@ def processar_upload(input_data):
                 record = SeqIO.read(bytes_io, "snapgene")
                 return record.id, str(record.seq).upper()
             except Exception as e:
-                return "Erro", f"Erro ao ler .dna (Verifique se instalou a lib 'construct'): {str(e)}"
+                return "Erro", f"Erro ao ler .dna (Instale a biblioteca 'construct'): {str(e)}"
 
         # --- CASO 2: Arquivo Texto (FASTA/TXT) ---
         bytes_data = input_data.getvalue()
@@ -131,10 +128,10 @@ st.markdown("Suporte para: **.dna**, **.fasta** e **.txt**.")
 
 with st.sidebar:
     st.header("Configurações")
-    num_pocos = st.slider("Número de Poços", 1, 15, 3) # Começa com 3
+    num_pocos = st.slider("Número de Poços", 1, 15, 3) 
     st.divider()
     inverter_cores = st.toggle("Inverter Cores (Modo Impressão)", value=False)
-    st.caption("Nota: A visualização simula um pente padrão de 15 poços para manter a proporção real.")
+    st.caption("Nota: A visualização simula um pente padrão de 12 poços para manter a proporção real.")
 
 dados_para_plotar = []
 labels_eixo_x = []
@@ -158,7 +155,7 @@ for i in range(num_pocos):
                 detalhes_hover.append(lad)
             else:
                 nomes_ladders.append(None)
-                tab_f, tab_t = st.tabs(["Arquivo", "Texto"])
+                tab_f, tab_t = st.tabs(["Arquivo (.dna/.fasta)", "Texto"])
                 seq, nome = "", f"{i+1}"
                 
                 with tab_f:
@@ -211,7 +208,7 @@ if any(dados_para_plotar):
              massa_total = sum([b[2] for b in lista_bandas]) if not eh_ladder else 1
         
         for (tam_aparente, tipo_banda, tam_real) in lista_bandas:
-            # --- ESTÉTICA ---
+            # --- ESTÉTICA AJUSTADA ---
             width = 2
             opacity = 0.8
             
@@ -233,9 +230,13 @@ if any(dados_para_plotar):
                 width = 3 + (8 * fracao)
                 opacity = 0.6 + (0.4 * fracao)
 
-            # --- DESENHO (BORDAS ARREDONDADAS) ---
+            # --- DESENHO COM BORDAS ARREDONDADAS ---
+            # AJUSTE FINO: Reduzimos a largura horizontal da banda de 0.35 para 0.28
+            # Isso cria mais espaço vazio entre as raias (estética da sua imagem 3)
+            largura_banda = 0.28 
+            
             fig.add_trace(go.Scatter(
-                x=[x_center - 0.35, x_center + 0.35],
+                x=[x_center - largura_banda, x_center + largura_banda],
                 y=[tam_aparente, tam_aparente],
                 mode='lines+markers',
                 line=dict(color=line_color, width=width),
@@ -247,8 +248,9 @@ if any(dados_para_plotar):
             ))
 
             if eh_ladder:
+                # Texto do ladder agora mais próximo (0.35) devido à banda mais estreita
                 fig.add_trace(go.Scatter(
-                    x=[x_center - 0.5], 
+                    x=[x_center - 0.45], 
                     y=[tam_aparente],
                     mode="text",
                     text=[str(tam_aparente)],
@@ -258,13 +260,12 @@ if any(dados_para_plotar):
                     hoverinfo='skip'
                 ))
 
-    # --- LAYOUT CORRIGIDO PARA LARGURA FIXA ---
+    # --- LAYOUT COM ESCALA FIXA (ZOOM OUT FORÇADO) ---
     
-    # Define uma largura mínima (como se fosse um pente de 15 poços)
-    # Se o usuário escolher mais de 15, o gráfico expande.
-    # Se escolher menos (ex: 3), ele mostra o espaço vazio até o 15.
-    LARGURA_PADRAO = 15 
-    max_range = max(num_pocos, LARGURA_PADRAO) + 0.5
+    # Define o range mínimo como 12 poços. 
+    # Isso evita que bandas de 3 poços fiquem "gordas" como barras de chocolate.
+    LARGURA_MINIMA = 12
+    max_range = max(num_pocos, LARGURA_MINIMA) + 0.5
 
     fig.update_layout(
         plot_bgcolor=bg_color,
@@ -278,7 +279,7 @@ if any(dados_para_plotar):
             tickfont=dict(color=text_color, size=14, family='Arial Black'),
             showgrid=False, 
             zeroline=False, 
-            # AQUI ESTÁ A MÁGICA: Fixamos o range final em pelo menos 15
+            # AQUI: Fixa o eixo X para mostrar sempre pelo menos 12 poços de largura
             range=[0.2, max_range] 
         ),
         yaxis=dict(
