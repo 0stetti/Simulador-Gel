@@ -1,5 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
+import pandas as pd
 import math
 from Bio.Seq import Seq
 from Bio.Restriction import RestrictionBatch, Analysis, CommOnly
@@ -17,7 +18,6 @@ st.set_page_config(
 # --- CSS PARA ESTILOS DISCRETOS ---
 st.markdown("""
 <style>
-/* Rodapé discreto no final da página (não fixo) */
 .footer {
     width: 100%;
     text-align: center;
@@ -27,9 +27,6 @@ st.markdown("""
     color: #666;
     border-top: 1px solid #333;
     margin-top: 50px;
-}
-.footer p {
-    margin: 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -142,7 +139,7 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
             
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
-# --- BARRA LATERAL (CONFIGURAÇÕES + AJUDA) ---
+# --- BARRA LATERAL ---
 with st.sidebar:
     st.header("Configurações")
     num_pocos = st.slider("Número de Poços", 1, 15, 3) 
@@ -156,29 +153,21 @@ with st.sidebar:
     agarose = st.slider("Concentração de Agarose (%)", 0.5, 2.0, 1.0, 0.1)
     
     st.divider()
-    
-    # --- AJUDA DISCRETA NA SIDEBAR ---
-    with st.expander("❓ Ajuda & Formatos Aceitos"):
+    with st.expander("❓ Ajuda"):
         st.markdown("""
-        **Formatos Aceitos:**
-        * `.dna` (SnapGene)
-        * `.fasta` / `.fa`
-        * `.txt` (Sequência crua)
-
-        **Dicas:**
-        * **Plasmídeos:** Marque "Circular" para ver bandas *Supercoiled* e *Nicked*.
-        * **Zoom:** Use o slider de Agarose para focar em bandas pequenas ou grandes.
-        * **Nomes:** Digite o nome da amostra no campo "Nome no Gel" para sair na imagem.
+        * **Plasmídeos:** Marque "Circular".
+        * **Nomes:** Use o campo "Nome no Gel".
+        * **Zoom:** Use o slider de Agarose.
         """)
 
 # --- CONTEÚDO PRINCIPAL ---
 st.title("🧪 Simulador de Eletroforese In Silico")
 
-# Lógica principal de processamento
+# Estrutura para guardar dados para o relatório (invisível inicialmente)
+relatorio_dados = []
 dados_para_plotar = []
 labels_eixo_x = []
 nomes_ladders = [] 
-detalhes_hover = [] 
 
 cols = st.columns(2)
 
@@ -188,6 +177,8 @@ for i in range(num_pocos):
         with st.expander(f"Poço {i+1}", expanded=(i==0)):
             tipo = st.radio(f"Conteúdo {i+1}:", ["Amostra", "Ladder"], key=f"t_{i}", horizontal=True)
             
+            rotulo_padrao = str(i+1)
+            
             if tipo == "Ladder":
                 lad = st.selectbox("Ladder:", list(LADDERS.keys()), key=f"l_{i}")
                 ladder_data = [(tam, "Ladder", tam) for tam in LADDERS[lad]]
@@ -195,9 +186,16 @@ for i in range(num_pocos):
                 
                 rotulo_custom = st.text_input("Nome no Gel:", value="M", key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
-                
                 nomes_ladders.append(lad)
-                detalhes_hover.append(lad)
+                
+                # Dados ocultos para CSV
+                relatorio_dados.append({
+                    "Poço": i+1,
+                    "Identificação": rotulo_custom,
+                    "Tipo": "Ladder",
+                    "Detalhes": lad,
+                    "Bandas (pb)": "; ".join([str(t) for t in LADDERS[lad]])
+                })
             else:
                 nomes_ladders.append(None)
                 tab_f, tab_t = st.tabs(["Arquivo", "Texto"])
@@ -224,38 +222,46 @@ for i in range(num_pocos):
                 rotulo_custom = st.text_input("Nome no Gel:", value=val_rotulo[:12], key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
 
-                info_texto = f"Circular: {circ}<br>Enzimas: {', '.join(enz) if enz else 'Uncut'}"
-                detalhes_hover.append(info_texto)
-
                 if seq:
                     try:
                         res = calcular_digestao(seq, enz, circ)
                         dados_para_plotar.append(res)
+                        
+                        # Dados ocultos para CSV
+                        fragmentos_str = "; ".join([str(int(b[0])) for b in res])
+                        desc_enzimas = ", ".join(enz) if enz else ("Circular Uncut" if circ else "Linear Uncut")
+                        relatorio_dados.append({
+                            "Poço": i+1,
+                            "Identificação": rotulo_custom,
+                            "Tipo": "Amostra",
+                            "Detalhes": desc_enzimas,
+                            "Bandas (pb)": fragmentos_str
+                        })
+                        
                     except Exception as e:
                         dados_para_plotar.append([])
+                        st.error(f"Erro no cálculo: {e}")
                 else:
                     dados_para_plotar.append([])
+                    relatorio_dados.append({
+                        "Poço": i+1,
+                        "Identificação": rotulo_custom,
+                        "Tipo": "Vazio",
+                        "Detalhes": "-",
+                        "Bandas (pb)": "-"
+                    })
 
 st.divider()
 
 if any(dados_para_plotar):
     
-    # Cores baseadas no estilo
+    # Cores
     if "Neon" in estilo_gel:
-        bg_color = '#1e1e1e'
-        text_color = 'white'
-        color_sample = '#00ff41'
-        color_ladder = '#ff9900'
+        bg_color = '#1e1e1e'; text_color = 'white'; color_sample = '#00ff41'; color_ladder = '#ff9900'
     elif "Profissional" in estilo_gel:
-        bg_color = '#1e1e1e'
-        text_color = 'white'
-        color_sample = 'white'
-        color_ladder = 'white'
-    else: # Publicação
-        bg_color = 'white'
-        text_color = 'black'
-        color_sample = 'black'
-        color_ladder = 'black'
+        bg_color = '#1e1e1e'; text_color = 'white'; color_sample = 'white'; color_ladder = 'white'
+    else: 
+        bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
     min_view = 50 + (100 * (agarose - 0.5)) 
     max_view = 25000 / (agarose * 0.8)
@@ -265,9 +271,7 @@ if any(dados_para_plotar):
     for i, lista_bandas in enumerate(dados_para_plotar):
         x_center = i + 1
         eh_ladder = (nomes_ladders[i] is not None)
-        
-        if eh_ladder: cor_atual = color_ladder
-        else: cor_atual = color_sample
+        cor_atual = color_ladder if eh_ladder else color_sample
 
         if lista_bandas:
              massa_total = sum([b[2] for b in lista_bandas]) if not eh_ladder else 1
@@ -309,8 +313,7 @@ if any(dados_para_plotar):
                     showlegend=False, hoverinfo='skip'
                 ))
 
-    LARGURA_MINIMA = 15
-    max_range = max(num_pocos, LARGURA_MINIMA) + 0.5
+    max_range = max(num_pocos, 15) + 0.5
 
     fig.update_layout(
         plot_bgcolor=bg_color, paper_bgcolor=bg_color,
@@ -330,11 +333,23 @@ if any(dados_para_plotar):
     
     fig.add_annotation(x=-0.05, y=1, xref="paper", yref="paper", text="pb", showarrow=False, font=dict(color=text_color, size=14, family="Arial Black"))
     st.plotly_chart(fig, use_container_width=True)
+    
+    # --- BOTÃO DISCRETO DE EXPORTAÇÃO ---
+    # Fica escondido dentro deste menu "Exportar Dados"
+    with st.expander("📥 Exportar Dados"):
+        df_resultados = pd.DataFrame(relatorio_dados)
+        csv = df_resultados.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Baixar Tabela (.csv)",
+            data=csv,
+            file_name='gel_resultado.csv',
+            mime='text/csv',
+        )
 
 else:
     st.info("Adicione amostras para gerar o gel.")
 
-# --- RODAPÉ DISCRETO ---
+# --- RODAPÉ ---
 st.markdown("""
 <div class="footer">
     <p><b>Elton Ostetti</b> | Laboratório de Biofármacos - Instituto Butantan</p>
