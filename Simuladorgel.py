@@ -139,31 +139,39 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
             
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
-# --- BARRA LATERAL ---
+# --- BARRA LATERAL (REORDENADA) ---
 with st.sidebar:
     st.header("Configurações")
+    
+    # 1. Número de Poços
     num_pocos = st.slider("Número de Poços", 1, 15, 3) 
     st.divider()
     
+    # 2. Concentração de Agarose (Mudou para cima)
+    agarose = st.slider("Concentração de Agarose (%)", 0.5, 2.0, 1.0, 0.1)
+    st.caption("Ajustar a agarose altera o zoom vertical.")
+    
+    st.divider()
+
+    # 3. Estilo Visual (Mudou para baixo)
     estilo_gel = st.selectbox(
         "Estilo Visual", 
         ["Neon (Verde/Laranja)", "Profissional (Dark P&B)", "Publicação (Light P&B)"]
     )
     
-    agarose = st.slider("Concentração de Agarose (%)", 0.5, 2.0, 1.0, 0.1)
-    
     st.divider()
+    
     with st.expander("❓ Ajuda"):
         st.markdown("""
         * **Plasmídeos:** Marque "Circular".
-        * **Nomes:** Use o campo "Nome no Gel".
+        * **Nomes:** Use o campo "Nome da Amostra".
         * **Zoom:** Use o slider de Agarose.
         """)
 
 # --- CONTEÚDO PRINCIPAL ---
 st.title("🧪 Simulador de Eletroforese In Silico")
 
-# Estrutura para guardar dados para o relatório (invisível inicialmente)
+# Estrutura para guardar dados para o relatório
 relatorio_dados = []
 dados_para_plotar = []
 labels_eixo_x = []
@@ -184,11 +192,12 @@ for i in range(num_pocos):
                 ladder_data = [(tam, "Ladder", tam) for tam in LADDERS[lad]]
                 dados_para_plotar.append(ladder_data)
                 
-                rotulo_custom = st.text_input("Nome no Gel:", value="M", key=f"lbl_{i}")
+                # Rótulo alterado para "Nome da Amostra"
+                rotulo_custom = st.text_input("Nome da Amostra:", value="M", key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
                 nomes_ladders.append(lad)
                 
-                # Dados ocultos para CSV
+                # Dados para CSV
                 relatorio_dados.append({
                     "Poço": i+1,
                     "Identificação": rotulo_custom,
@@ -219,7 +228,8 @@ for i in range(num_pocos):
                 enz = c2.multiselect("Enzimas", TODAS_ENZIMAS, key=f"e_{i}")
                 
                 val_rotulo = nome_arquivo if nome_arquivo else str(i+1)
-                rotulo_custom = st.text_input("Nome no Gel:", value=val_rotulo[:12], key=f"lbl_{i}")
+                # Rótulo alterado para "Nome da Amostra"
+                rotulo_custom = st.text_input("Nome da Amostra:", value=val_rotulo[:12], key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
 
                 if seq:
@@ -227,7 +237,6 @@ for i in range(num_pocos):
                         res = calcular_digestao(seq, enz, circ)
                         dados_para_plotar.append(res)
                         
-                        # Dados ocultos para CSV
                         fragmentos_str = "; ".join([str(int(b[0])) for b in res])
                         desc_enzimas = ", ".join(enz) if enz else ("Circular Uncut" if circ else "Linear Uncut")
                         relatorio_dados.append({
@@ -335,7 +344,6 @@ if any(dados_para_plotar):
     st.plotly_chart(fig, use_container_width=True)
     
     # --- BOTÃO DISCRETO DE EXPORTAÇÃO ---
-    # Fica escondido dentro deste menu "Exportar Dados"
     with st.expander("📥 Exportar Dados"):
         df_resultados = pd.DataFrame(relatorio_dados)
         csv = df_resultados.to_csv(index=False).encode('utf-8')
@@ -349,7 +357,7 @@ if any(dados_para_plotar):
 else:
     st.info("Adicione amostras para gerar o gel.")
 
-# --- RODAPÉ ---
+# --- RODAPÉ DISCRETO ---
 st.markdown("""
 <div class="footer">
     <p><b>Elton Ostetti</b> | Laboratório de Biofármacos - Instituto Butantan</p>
