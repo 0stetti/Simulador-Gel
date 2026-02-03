@@ -1,6 +1,6 @@
 import streamlit as st
 import plotly.graph_objects as go
-import math # Importante estar aqui no topo
+import math
 from Bio.Seq import Seq
 from Bio.Restriction import RestrictionBatch, Analysis, CommOnly
 from io import StringIO
@@ -9,8 +9,9 @@ from Bio import SeqIO
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="Simulador de Gel Interativo", layout="wide", page_icon="🧬")
 
-# Carrega TODAS as enzimas comerciais
-TODAS_ENZIMAS = sorted(list(CommOnly))
+# CORREÇÃO DO ERRO: Converte os objetos de enzima para Strings (texto) imediatamente
+# Isso evita o erro de "expected str instance" na hora do .join
+TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
 # Dados de Ladders
 LADDERS = {
@@ -42,8 +43,10 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
     seq_obj = Seq(sequencia)
     tamanho_total = len(seq_obj)
     
+    # Se não tiver enzimas selecionadas, retorna tamanho total
     if not enzimas: return [tamanho_total]
     
+    # RestrictionBatch aceita lista de strings (nomes das enzimas)
     rb = RestrictionBatch(enzimas)
     analise = Analysis(rb, seq_obj, linear=not eh_circular)
     cortes = analise.full()
@@ -117,6 +120,7 @@ for i in range(num_pocos):
                 circ = c1.checkbox("Circular?", True, key=f"c_{i}")
                 enz = c2.multiselect("Enzimas", TODAS_ENZIMAS, key=f"e_{i}")
                 
+                # CORREÇÃO APLICADA AQUI: 'enz' agora é uma lista de strings, então .join funciona
                 info_texto = f"Circular: {circ}<br>Enzimas: {', '.join(enz) if enz else 'Nenhuma'}"
                 detalhes_hover.append(info_texto)
 
@@ -144,6 +148,7 @@ if any(dados_para_plotar):
     for i, bandas in enumerate(dados_para_plotar):
         x_center = i + 1
         eh_ladder = (labels_eixo_x[i] == "M")
+        ladder_name = nomes_ladders[i]
         
         massa_total = sum(bandas) if bandas and not eh_ladder else 1
         
@@ -153,6 +158,7 @@ if any(dados_para_plotar):
             opacity = 0.8
             
             if eh_ladder:
+                # Destaque para bandas de referência
                 if tam in [3000, 1000, 500]: 
                     width = 4
                     opacity = 1.0
@@ -181,32 +187,31 @@ if any(dados_para_plotar):
 
             # --- RÓTULOS LATERAIS DO LADDER ---
             if eh_ladder:
-                # Nota: Em eixos Log, passamos o valor real para y, Plotly ajusta.
                 fig.add_annotation(
-                    x=x_center - 0.5,
+                    x=x_center - 0.45, # Aproximamos um pouco mais da banda para não cortar
                     y=tam, 
                     text=f"{tam}",
                     showarrow=False,
                     xanchor="right",
-                    font=dict(color=text_color, size=9),
+                    font=dict(color=text_color, size=10),
                     yshift=0
                 )
+                # Linha guia fina
                 fig.add_shape(
                     type="line",
-                    x0=x_center - 0.5, x1=x_center - 0.35,
+                    x0=x_center - 0.45, x1=x_center - 0.35,
                     y0=tam, y1=tam,
                     line=dict(color=text_color, width=0.5),
                     opacity=0.3
                 )
 
-    # --- CONFIGURAÇÃO SEGURA DO LAYOUT ---
+    # --- CONFIGURAÇÃO DO LAYOUT ---
     fig.update_layout(
         plot_bgcolor=bg_color,
         paper_bgcolor=bg_color,
         height=600,
-        margin=dict(t=30, b=30, l=60, r=30),
+        margin=dict(t=30, b=30, l=80, r=30), # AUMENTAMOS A MARGEM ESQUERDA (l=80)
         
-        # Configuração do Eixo X
         xaxis=dict(
             tickmode='array',
             tickvals=list(range(1, num_pocos + 1)),
@@ -214,15 +219,13 @@ if any(dados_para_plotar):
             tickfont=dict(color=text_color, size=14, family='Arial Black'),
             showgrid=False,
             zeroline=False,
-            range=[0.5, num_pocos + 0.5]
+            # CORREÇÃO: Começamos do 0 para dar espaço aos rótulos do Ladder no poço 1
+            range=[0, num_pocos + 1] 
         ),
         
-        # Configuração do Eixo Y (Logarítmico)
         yaxis=dict(
             type='log',
-            # Intervalo Invertido Manualmente: [log10(max), log10(min)]
-            # Isso garante que 20000 fique no topo e 80 embaixo
-            range=[math.log10(20000), math.log10(80)], 
+            range=[math.log10(20000), math.log10(80)], # Invertido
             showgrid=False,
             zeroline=False,
             title=dict(text="pb", font=dict(color=text_color, size=14)),
@@ -231,7 +234,6 @@ if any(dados_para_plotar):
         )
     )
     
-    # Label extra "pb" no topo
     fig.add_annotation(
         x=-0.05, y=1, xref="paper", yref="paper",
         text="pb", showarrow=False,
