@@ -6,10 +6,9 @@ from io import StringIO
 from Bio import SeqIO
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="Simulador de Gel (Full Enzymes)", layout="wide", page_icon="🧬")
+st.set_page_config(page_title="Simulador de Gel Pro", layout="wide", page_icon="🧬")
 
-# 1. Carrega TODAS as enzimas comerciais do Biopython
-# CommOnly é um conjunto que contém apenas enzimas disponíveis comercialmente
+# Carrega TODAS as enzimas comerciais
 TODAS_ENZIMAS = sorted(list(CommOnly))
 
 # Dados de Ladders (Marcadores)
@@ -80,10 +79,14 @@ st.markdown(f"Base de dados carregada: **{len(TODAS_ENZIMAS)} enzimas comerciais
 with st.sidebar:
     st.header("Configurações do Gel")
     num_pocos = st.slider("Número de Poços", min_value=1, max_value=20, value=10)
-    st.info("Dica: A lista de enzimas agora é pesquisável. Digite o nome para encontrar.")
+    st.info("Dica: Digite para buscar a enzima.")
+    st.divider()
+    # --- NOVIDADE 1: Botão para inverter a cor do gel ---
+    inverter_cores = st.toggle("Inverter Cores (Modo Publicação)", value=False)
 
 dados_para_plotar = []
 labels_eixo_x = []
+ladder_names_used = []
 
 st.subheader("Configuração dos Poços")
 cols = st.columns(2)
@@ -97,11 +100,13 @@ for i in range(num_pocos):
             if tipo_conteudo == "Ladder (Marcador)":
                 ladder_nome = st.selectbox("Selecione o Ladder:", list(LADDERS.keys()), key=f"lad_{i}")
                 dados_para_plotar.append(LADDERS[ladder_nome])
-                labels_eixo_x.append("M") 
+                labels_eixo_x.append("M")
+                ladder_names_used.append(ladder_nome)
             else:
                 tab_file, tab_text = st.tabs(["Arquivo", "Texto"])
                 seq_final = ""
                 nome_seq = f"P{i+1}"
+                ladder_names_used.append(None)
                 
                 with tab_file:
                     arq = st.file_uploader("Upload FASTA", type=['fasta', 'txt'], key=f"up_{i}")
@@ -120,15 +125,13 @@ for i in range(num_pocos):
                 with c1:
                     is_circular = st.checkbox("Circular?", value=True, key=f"circ_{i}")
                 with c2:
-                    # AQUI ESTÁ A MUDANÇA: Usamos a lista completa TODAS_ENZIMAS
-                    # O Streamlit permite digitar para buscar dentro do multiselect
                     enzimas = st.multiselect("Enzimas:", options=TODAS_ENZIMAS, key=f"enz_{i}")
                 
                 if seq_final:
                     try:
                         bandas = calcular_digestao(seq_final, enzimas, is_circular)
                         dados_para_plotar.append(bandas)
-                        labels_eixo_x.append(str(i+1)) 
+                        labels_eixo_x.append(str(i+1))
                     except Exception as e:
                         dados_para_plotar.append([])
                         labels_eixo_x.append("Erro")
@@ -140,10 +143,16 @@ st.divider()
 st.subheader("Resultado da Eletroforese")
 
 if any(dados_para_plotar):
-    # --- VISUALIZAÇÃO ESTILO REFERÊNCIA ---
+    # --- VISUALIZAÇÃO COM ESTÉTICA AVANÇADA ---
+    
+    # Define as cores baseado no toggle de inversão
+    cor_fundo = 'white' if inverter_cores else '#222222'
+    cor_banda_padrao = 'black' if inverter_cores else 'white'
+    cor_texto = 'black' if inverter_cores else 'white'
+
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.set_facecolor('#222222')
-    fig.patch.set_facecolor('#222222')
+    ax.set_facecolor(cor_fundo)
+    fig.patch.set_facecolor(cor_fundo)
     
     for spine in ax.spines.values():
         spine.set_visible(False)
@@ -151,31 +160,69 @@ if any(dados_para_plotar):
     for idx_poco, bandas in enumerate(dados_para_plotar):
         x_pos = idx_poco + 1
         eh_ladder = labels_eixo_x[idx_poco] == "M"
-        cor_banda = 'white'
+        nome_ladder = ladder_names_used[idx_poco]
         
         for tamanho in bandas:
-            ax.hlines(y=tamanho, xmin=x_pos-0.3, xmax=x_pos+0.3, colors=cor_banda, linewidth=3)
+            # --- NOVIDADE 2: Intensidade variável das bandas do marcador ---
+            linewidth = 3.0
+            alpha = 1.0
             
             if eh_ladder:
-                label_texto = f"{tamanho/1000:.1f}" if tamanho >= 1000 else f"{tamanho}"
-                ax.text(x_pos-0.5, tamanho, label_texto, color='white', fontsize=9, ha='right', va='center')
-                ax.hlines(y=tamanho, xmin=x_pos-0.5, xmax=x_pos-0.3, colors='white', linewidth=0.5)
+                # Lógica para o 1kb Plus (baseado na imagem de referência)
+                if "1kb Plus" in nome_ladder:
+                    if tamanho in [3000, 1000]: # Bandas de referência (mais fortes)
+                        linewidth = 4.5
+                        alpha = 1.0
+                    elif tamanho >= 1650: # Bandas grandes
+                        linewidth = 3.0
+                        alpha = 0.9
+                    elif tamanho >= 500: # Bandas médias
+                        linewidth = 2.5
+                        alpha = 0.85
+                    else: # Bandas pequenas (mais fracas)
+                        linewidth = 2.0
+                        alpha = 0.7
+                # Lógica genérica para outros ladders
+                else:
+                    if tamanho % 1000 == 0 or tamanho == 500: # Bandas "redondas" mais fortes
+                        linewidth = 3.5
+                        alpha = 0.95
+                    else:
+                        linewidth = 2.5
+                        alpha = 0.8
+            
+            # Desenha a banda com a intensidade calculada
+            ax.hlines(y=tamanho, xmin=x_pos-0.3, xmax=x_pos+0.3, colors=cor_banda_padrao, linewidth=linewidth, alpha=alpha)
+            
+            # --- NOVIDADE 3: Correção e posicionamento dos labels do peso molecular ---
+            if eh_ladder:
+                # Formatação limpa para Kb ou bp
+                if tamanho >= 1000:
+                    label_texto = f"{tamanho/1000:.1f}".rstrip('0').rstrip('.')
+                else:
+                    label_texto = str(tamanho)
+                
+                # Texto e linha guia com a cor correta (invertida ou não)
+                ax.text(x_pos-0.5, tamanho, label_texto, color=cor_texto, fontsize=9, ha='right', va='center')
+                ax.hlines(y=tamanho, xmin=x_pos-0.5, xmax=x_pos-0.3, colors=cor_texto, linewidth=0.5, alpha=0.6)
 
+    # Configuração final dos eixos
     ax.set_yscale('log')
-    # Ajuste fino da escala para parecer com a imagem de referência (bandas maiores em cima)
     ax.set_ylim(20000, 100) 
     
     ax.set_xlim(0, num_pocos + 1)
     ax.set_xticks(range(1, num_pocos + 1))
-    ax.set_xticklabels(labels_eixo_x, color='white', fontsize=12, weight='bold')
+    # Usa a cor do texto correta para os números dos poços
+    ax.set_xticklabels(labels_eixo_x, color=cor_texto, fontsize=12, weight='bold')
     
-    ax.set_ylabel("Kb", color='white', fontsize=12, weight='bold', rotation=0, ha='right')
+    # Título do eixo Y ('Kb') com a cor correta
+    ax.set_ylabel("Kb", color=cor_texto, fontsize=12, weight='bold', rotation=0, ha='right')
     ax.yaxis.set_label_coords(-0.05, 0.95)
     
     ax.set_yticks([])
     ax.set_yticklabels([])
-    ax.tick_params(axis='x', colors='white')
+    ax.tick_params(axis='x', colors=cor_texto) # Cor dos tracinhos do eixo X
     ax.grid(False)
     st.pyplot(fig)
 else:
-    st.warning("Preencha pelo menos um poço.")
+    st.warning("Preencha pelo menos um poço para gerar o gel.")
