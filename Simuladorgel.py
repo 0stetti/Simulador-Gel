@@ -1,12 +1,16 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 from Bio.Seq import Seq
-from Bio.Restriction import RestrictionBatch, Analysis
+from Bio.Restriction import RestrictionBatch, Analysis, CommOnly
 from io import StringIO
 from Bio import SeqIO
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="Simulador de Gel (Estilo Referência)", layout="wide", page_icon="🧬")
+st.set_page_config(page_title="Simulador de Gel (Full Enzymes)", layout="wide", page_icon="🧬")
+
+# 1. Carrega TODAS as enzimas comerciais do Biopython
+# CommOnly é um conjunto que contém apenas enzimas disponíveis comercialmente
+TODAS_ENZIMAS = sorted(list(CommOnly))
 
 # Dados de Ladders (Marcadores)
 LADDERS = {
@@ -70,13 +74,13 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
     return sorted(fragmentos, reverse=True)
 
 # --- INTERFACE ---
-st.title("🧪 Simulador de Eletroforese Multi-Poços")
-st.markdown("Configure cada poço individualmente para simular sua clonagem ou digestão diagnóstica.")
+st.title("🧪 Simulador de Eletroforese Profissional")
+st.markdown(f"Base de dados carregada: **{len(TODAS_ENZIMAS)} enzimas comerciais** disponíveis.")
 
 with st.sidebar:
     st.header("Configurações do Gel")
     num_pocos = st.slider("Número de Poços", min_value=1, max_value=20, value=10)
-    st.info("Dica: Use EcoRI e HindIII para testar.")
+    st.info("Dica: A lista de enzimas agora é pesquisável. Digite o nome para encontrar.")
 
 dados_para_plotar = []
 labels_eixo_x = []
@@ -93,7 +97,7 @@ for i in range(num_pocos):
             if tipo_conteudo == "Ladder (Marcador)":
                 ladder_nome = st.selectbox("Selecione o Ladder:", list(LADDERS.keys()), key=f"lad_{i}")
                 dados_para_plotar.append(LADDERS[ladder_nome])
-                labels_eixo_x.append("M") # M para Marcador, como na imagem de referência
+                labels_eixo_x.append("M") 
             else:
                 tab_file, tab_text = st.tabs(["Arquivo", "Texto"])
                 seq_final = ""
@@ -116,13 +120,15 @@ for i in range(num_pocos):
                 with c1:
                     is_circular = st.checkbox("Circular?", value=True, key=f"circ_{i}")
                 with c2:
-                    enzimas = st.multiselect("Enzimas:", options=['EcoRI', 'BamHI', 'HindIII', 'NotI', 'XhoI', 'PstI', 'XbaI', 'NdeI'], key=f"enz_{i}")
+                    # AQUI ESTÁ A MUDANÇA: Usamos a lista completa TODAS_ENZIMAS
+                    # O Streamlit permite digitar para buscar dentro do multiselect
+                    enzimas = st.multiselect("Enzimas:", options=TODAS_ENZIMAS, key=f"enz_{i}")
                 
                 if seq_final:
                     try:
                         bandas = calcular_digestao(seq_final, enzimas, is_circular)
                         dados_para_plotar.append(bandas)
-                        labels_eixo_x.append(str(i+1)) # Apenas o número do poço, como na imagem
+                        labels_eixo_x.append(str(i+1)) 
                     except Exception as e:
                         dados_para_plotar.append([])
                         labels_eixo_x.append("Erro")
@@ -134,58 +140,41 @@ st.divider()
 st.subheader("Resultado da Eletroforese")
 
 if any(dados_para_plotar):
-    # --- CONFIGURAÇÃO DE ESTILO PARA IGUALAR A REFERÊNCIA ---
+    # --- VISUALIZAÇÃO ESTILO REFERÊNCIA ---
     fig, ax = plt.subplots(figsize=(12, 6))
-    
-    # Cor de fundo escura, sólida (como na imagem)
     ax.set_facecolor('#222222')
     fig.patch.set_facecolor('#222222')
     
-    # Remove as bordas do gráfico para parecer mais um gel contínuo
     for spine in ax.spines.values():
         spine.set_visible(False)
 
     for idx_poco, bandas in enumerate(dados_para_plotar):
         x_pos = idx_poco + 1
         eh_ladder = labels_eixo_x[idx_poco] == "M"
-        
-        # Todas as bandas brancas/claras e sólidas
         cor_banda = 'white'
         
         for tamanho in bandas:
-            # Desenha a banda. Ajuste a 'linewidth' se quiser bandas mais grossas ou finas
             ax.hlines(y=tamanho, xmin=x_pos-0.3, xmax=x_pos+0.3, colors=cor_banda, linewidth=3)
             
-            # Adiciona os labels do ladder ao lado esquerdo (como na imagem de referência)
             if eh_ladder:
-                # Converte para Kb para a exibição, se for maior que 1000bp
                 label_texto = f"{tamanho/1000:.1f}" if tamanho >= 1000 else f"{tamanho}"
-                # Posição X ajustada para ficar à esquerda do poço M
                 ax.text(x_pos-0.5, tamanho, label_texto, color='white', fontsize=9, ha='right', va='center')
-                # Adiciona as linhas guias horizontais do ladder
                 ax.hlines(y=tamanho, xmin=x_pos-0.5, xmax=x_pos-0.3, colors='white', linewidth=0.5)
 
-
-    # Configuração dos Eixos (para ficar igual à referência)
     ax.set_yscale('log')
-    # Limites ajustados para ficar mais próximo da imagem de referência
-    ax.set_ylim(20000, 100) # Invertido: bandas maiores em cima
+    # Ajuste fino da escala para parecer com a imagem de referência (bandas maiores em cima)
+    ax.set_ylim(20000, 100) 
     
     ax.set_xlim(0, num_pocos + 1)
     ax.set_xticks(range(1, num_pocos + 1))
     ax.set_xticklabels(labels_eixo_x, color='white', fontsize=12, weight='bold')
     
-    # Título do eixo Y ('Kb') posicionado como na imagem
     ax.set_ylabel("Kb", color='white', fontsize=12, weight='bold', rotation=0, ha='right')
-    ax.yaxis.set_label_coords(-0.05, 0.95) # Posiciona 'Kb' no canto superior esquerdo
+    ax.yaxis.set_label_coords(-0.05, 0.95)
     
-    # Remove ticks e labels do eixo Y (já temos os números do ladder)
     ax.set_yticks([])
     ax.set_yticklabels([])
-    
-    # Ajusta a cor dos ticks do eixo X
     ax.tick_params(axis='x', colors='white')
-    
     ax.grid(False)
     st.pyplot(fig)
 else:
