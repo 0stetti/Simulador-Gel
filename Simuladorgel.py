@@ -9,7 +9,7 @@ from Bio import SeqIO
 
 # --- CONFIGURAÇÃO INICIAL DA PÁGINA ---
 st.set_page_config(
-    page_title="Simulador de Eletroforese", # Título da aba limpo
+    page_title="Simulador de Digestão de DNA e Eletroforese", # Título da aba limpo
     layout="wide", 
     page_icon="🧬",
     initial_sidebar_state="expanded"
