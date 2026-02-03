@@ -139,7 +139,7 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
             
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
-# --- BARRA LATERAL (REORDENADA) ---
+# --- BARRA LATERAL ---
 with st.sidebar:
     st.header("Configurações")
     
@@ -147,16 +147,16 @@ with st.sidebar:
     num_pocos = st.slider("Número de Poços", 1, 15, 3) 
     st.divider()
     
-    # 2. Concentração de Agarose (Mudou para cima)
+    # 2. Concentração de Agarose
     agarose = st.slider("Concentração de Agarose (%)", 0.5, 2.0, 1.0, 0.1)
     st.caption("Ajustar a agarose altera o zoom vertical.")
     
     st.divider()
 
-    # 3. Estilo Visual (Mudou para baixo)
+    # 3. Estilo Visual (ORDEM ALTERADA)
     estilo_gel = st.selectbox(
         "Estilo Visual", 
-        ["Neon (Verde/Laranja)", "Profissional (Dark P&B)", "Publicação (Light P&B)"]
+        ["Profissional (Dark P&B)", "Publicação (Light P&B)", "Neon (Verde/Laranja)"]
     )
     
     st.divider()
@@ -228,7 +228,6 @@ for i in range(num_pocos):
                 enz = c2.multiselect("Enzimas", TODAS_ENZIMAS, key=f"e_{i}")
                 
                 val_rotulo = nome_arquivo if nome_arquivo else str(i+1)
-                # Rótulo alterado para "Nome da Amostra"
                 rotulo_custom = st.text_input("Nome da Amostra:", value=val_rotulo[:12], key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
 
