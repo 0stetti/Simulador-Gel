@@ -9,8 +9,7 @@ from Bio import SeqIO
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="Simulador de Gel Interativo", layout="wide", page_icon="🧬")
 
-# CORREÇÃO DO ERRO: Converte os objetos de enzima para Strings (texto) imediatamente
-# Isso evita o erro de "expected str instance" na hora do .join
+# Converte enzimas para string para evitar erros
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
 # Dados de Ladders
@@ -43,10 +42,8 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
     seq_obj = Seq(sequencia)
     tamanho_total = len(seq_obj)
     
-    # Se não tiver enzimas selecionadas, retorna tamanho total
     if not enzimas: return [tamanho_total]
     
-    # RestrictionBatch aceita lista de strings (nomes das enzimas)
     rb = RestrictionBatch(enzimas)
     analise = Analysis(rb, seq_obj, linear=not eh_circular)
     cortes = analise.full()
@@ -73,7 +70,7 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
 
 # --- INTERFACE ---
 st.title("🧪 Simulador de Eletroforese Interativo")
-st.markdown("Passe o mouse sobre as bandas para ver o tamanho exato em pares de base (pb).")
+st.markdown("Passe o mouse sobre as bandas para ver detalhes.")
 
 with st.sidebar:
     st.header("Configurações")
@@ -120,7 +117,6 @@ for i in range(num_pocos):
                 circ = c1.checkbox("Circular?", True, key=f"c_{i}")
                 enz = c2.multiselect("Enzimas", TODAS_ENZIMAS, key=f"e_{i}")
                 
-                # CORREÇÃO APLICADA AQUI: 'enz' agora é uma lista de strings, então .join funciona
                 info_texto = f"Circular: {circ}<br>Enzimas: {', '.join(enz) if enz else 'Nenhuma'}"
                 detalhes_hover.append(info_texto)
 
@@ -148,17 +144,16 @@ if any(dados_para_plotar):
     for i, bandas in enumerate(dados_para_plotar):
         x_center = i + 1
         eh_ladder = (labels_eixo_x[i] == "M")
-        ladder_name = nomes_ladders[i]
         
         massa_total = sum(bandas) if bandas and not eh_ladder else 1
         
         for tam in bandas:
-            # --- LÓGICA DE ESPESSURA E OPACIDADE ---
+            # --- ESTÉTICA ---
             width = 2
             opacity = 0.8
             
             if eh_ladder:
-                # Destaque para bandas de referência
+                # Ladder: Bandas de referência mais fortes
                 if tam in [3000, 1000, 500]: 
                     width = 4
                     opacity = 1.0
@@ -169,11 +164,12 @@ if any(dados_para_plotar):
                     width = 1.5
                     opacity = 0.7
             else:
+                # Amostra: Massa proporcional
                 fracao_massa = tam / massa_total
                 width = 2 + (6 * fracao_massa) 
                 opacity = 0.5 + (0.5 * fracao_massa)
 
-            # --- DESENHO DA BANDA ---
+            # --- DESENHAR BANDA ---
             fig.add_trace(go.Scatter(
                 x=[x_center - 0.35, x_center + 0.35],
                 y=[tam, tam],
@@ -182,35 +178,30 @@ if any(dados_para_plotar):
                 opacity=opacity,
                 showlegend=False,
                 hoverinfo='text',
-                hovertext=f"<b>Tamanho:</b> {tam} pb<br><b>Poço:</b> {labels_eixo_x[i]}<br>{detalhes_hover[i]}"
+                hovertext=f"<b>{tam} pb</b><br>{labels_eixo_x[i]}<br>{detalhes_hover[i]}"
             ))
 
-            # --- RÓTULOS LATERAIS DO LADDER ---
+            # --- RÓTULOS DO LADDER (NOVA ESTRATÉGIA) ---
             if eh_ladder:
-                fig.add_annotation(
-                    x=x_center - 0.45, # Aproximamos um pouco mais da banda para não cortar
-                    y=tam, 
-                    text=f"{tam}",
-                    showarrow=False,
-                    xanchor="right",
-                    font=dict(color=text_color, size=10),
-                    yshift=0
-                )
-                # Linha guia fina
-                fig.add_shape(
-                    type="line",
-                    x0=x_center - 0.45, x1=x_center - 0.35,
-                    y0=tam, y1=tam,
-                    line=dict(color=text_color, width=0.5),
-                    opacity=0.3
-                )
+                # Adiciona um ponto de texto invisível (mode='text')
+                # Isso garante que o texto apareça independente da margem
+                fig.add_trace(go.Scatter(
+                    x=[x_center - 0.5], 
+                    y=[tam],
+                    mode="text",
+                    text=[str(tam)],
+                    textposition="middle left",
+                    textfont=dict(color=text_color, size=10),
+                    showlegend=False,
+                    hoverinfo='skip'
+                ))
 
-    # --- CONFIGURAÇÃO DO LAYOUT ---
+    # --- LAYOUT E EIXOS ---
     fig.update_layout(
         plot_bgcolor=bg_color,
         paper_bgcolor=bg_color,
-        height=600,
-        margin=dict(t=30, b=30, l=80, r=30), # AUMENTAMOS A MARGEM ESQUERDA (l=80)
+        height=700,
+        margin=dict(t=40, b=40, l=40, r=40),
         
         xaxis=dict(
             tickmode='array',
@@ -219,25 +210,21 @@ if any(dados_para_plotar):
             tickfont=dict(color=text_color, size=14, family='Arial Black'),
             showgrid=False,
             zeroline=False,
-            # CORREÇÃO: Começamos do 0 para dar espaço aos rótulos do Ladder no poço 1
-            range=[0, num_pocos + 1] 
+            # Inicia em 0.2 para dar espaço aos números do ladder da esquerda
+            range=[0.2, num_pocos + 0.8] 
         ),
         
         yaxis=dict(
             type='log',
-            range=[math.log10(20000), math.log10(80)], # Invertido
+            # ORDEM CORRETA: [log(Min), log(Max)] = [Baixo, Cima]
+            # Como queremos 80 embaixo e 20000 em cima, usamos a ordem crescente padrão.
+            range=[math.log10(80), math.log10(20000)],
             showgrid=False,
             zeroline=False,
-            title=dict(text="pb", font=dict(color=text_color, size=14)),
+            title=dict(text="Tamanho (pb)", font=dict(color=text_color, size=14)),
             tickfont=dict(color=text_color),
-            showticklabels=False 
+            showticklabels=False # Oculta eixo Y padrão (já temos os ladders)
         )
-    )
-    
-    fig.add_annotation(
-        x=-0.05, y=1, xref="paper", yref="paper",
-        text="pb", showarrow=False,
-        font=dict(color=text_color, size=14, family="Arial Black")
     )
 
     st.plotly_chart(fig, use_container_width=True)
