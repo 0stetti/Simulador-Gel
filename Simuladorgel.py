@@ -6,7 +6,7 @@ from io import StringIO
 from Bio import SeqIO
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="Gel Multi-Poços Pro", layout="wide", page_icon="🧪")
+st.set_page_config(page_title="Simulador de Gel (Estilo Referência)", layout="wide", page_icon="🧬")
 
 # Dados de Ladders (Marcadores)
 LADDERS = {
@@ -93,7 +93,7 @@ for i in range(num_pocos):
             if tipo_conteudo == "Ladder (Marcador)":
                 ladder_nome = st.selectbox("Selecione o Ladder:", list(LADDERS.keys()), key=f"lad_{i}")
                 dados_para_plotar.append(LADDERS[ladder_nome])
-                labels_eixo_x.append("L")
+                labels_eixo_x.append("M") # M para Marcador, como na imagem de referência
             else:
                 tab_file, tab_text = st.tabs(["Arquivo", "Texto"])
                 seq_final = ""
@@ -122,42 +122,70 @@ for i in range(num_pocos):
                     try:
                         bandas = calcular_digestao(seq_final, enzimas, is_circular)
                         dados_para_plotar.append(bandas)
-                        label_enz = "/".join(enzimas) if enzimas else "Uncut"
-                        labels_eixo_x.append(f"{nome_seq[:6]}..\n{label_enz}")
+                        labels_eixo_x.append(str(i+1)) # Apenas o número do poço, como na imagem
                     except Exception as e:
                         dados_para_plotar.append([])
                         labels_eixo_x.append("Erro")
                 else:
                     dados_para_plotar.append([])
-                    labels_eixo_x.append("Vazio")
+                    labels_eixo_x.append(str(i+1))
 
 st.divider()
 st.subheader("Resultado da Eletroforese")
 
 if any(dados_para_plotar):
+    # --- CONFIGURAÇÃO DE ESTILO PARA IGUALAR A REFERÊNCIA ---
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.set_facecolor('black')
-    fig.patch.set_facecolor('#0e1117')
     
+    # Cor de fundo escura, sólida (como na imagem)
+    ax.set_facecolor('#222222')
+    fig.patch.set_facecolor('#222222')
+    
+    # Remove as bordas do gráfico para parecer mais um gel contínuo
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
     for idx_poco, bandas in enumerate(dados_para_plotar):
         x_pos = idx_poco + 1
-        eh_ladder = labels_eixo_x[idx_poco] == "L"
-        cor_banda = '#ff9900' if eh_ladder else '#00ff41'
+        eh_ladder = labels_eixo_x[idx_poco] == "M"
+        
+        # Todas as bandas brancas/claras e sólidas
+        cor_banda = 'white'
         
         for tamanho in bandas:
-            ax.hlines(y=tamanho, xmin=x_pos-0.35, xmax=x_pos+0.35, colors=cor_banda, linewidth=2.5, alpha=0.85)
+            # Desenha a banda. Ajuste a 'linewidth' se quiser bandas mais grossas ou finas
+            ax.hlines(y=tamanho, xmin=x_pos-0.3, xmax=x_pos+0.3, colors=cor_banda, linewidth=3)
+            
+            # Adiciona os labels do ladder ao lado esquerdo (como na imagem de referência)
             if eh_ladder:
-                ax.text(x_pos-0.45, tamanho, str(tamanho), color='white', fontsize=6, ha='right', va='center')
+                # Converte para Kb para a exibição, se for maior que 1000bp
+                label_texto = f"{tamanho/1000:.1f}" if tamanho >= 1000 else f"{tamanho}"
+                # Posição X ajustada para ficar à esquerda do poço M
+                ax.text(x_pos-0.5, tamanho, label_texto, color='white', fontsize=9, ha='right', va='center')
+                # Adiciona as linhas guias horizontais do ladder
+                ax.hlines(y=tamanho, xmin=x_pos-0.5, xmax=x_pos-0.3, colors='white', linewidth=0.5)
 
+
+    # Configuração dos Eixos (para ficar igual à referência)
     ax.set_yscale('log')
-    ax.set_ylim(50, 20000)
+    # Limites ajustados para ficar mais próximo da imagem de referência
+    ax.set_ylim(20000, 100) # Invertido: bandas maiores em cima
+    
     ax.set_xlim(0, num_pocos + 1)
     ax.set_xticks(range(1, num_pocos + 1))
-    ax.set_xticklabels(labels_eixo_x, rotation=45, ha='right', color='white', fontsize=9)
-    ax.set_ylabel("Pares de Base (bp)", color='white')
-    ax.tick_params(axis='y', colors='white')
-    ax.spines['bottom'].set_color('white')
-    ax.spines['left'].set_color('white')
+    ax.set_xticklabels(labels_eixo_x, color='white', fontsize=12, weight='bold')
+    
+    # Título do eixo Y ('Kb') posicionado como na imagem
+    ax.set_ylabel("Kb", color='white', fontsize=12, weight='bold', rotation=0, ha='right')
+    ax.yaxis.set_label_coords(-0.05, 0.95) # Posiciona 'Kb' no canto superior esquerdo
+    
+    # Remove ticks e labels do eixo Y (já temos os números do ladder)
+    ax.set_yticks([])
+    ax.set_yticklabels([])
+    
+    # Ajusta a cor dos ticks do eixo X
+    ax.tick_params(axis='x', colors='white')
+    
     ax.grid(False)
     st.pyplot(fig)
 else:
