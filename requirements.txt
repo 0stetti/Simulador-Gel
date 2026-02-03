@@ -1,5 +1,6 @@
 streamlit
-biopython
-matplotlib
 plotly
-construct
+biopython
+pandas
+dna_features_viewer
+matplotlib
