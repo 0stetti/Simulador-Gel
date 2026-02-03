@@ -14,21 +14,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CSS PARA O RODAPÉ ---
+# --- CSS PARA ESTILOS DISCRETOS ---
 st.markdown("""
 <style>
+/* Rodapé discreto no final da página (não fixo) */
 .footer {
-    position: fixed;
-    left: 0;
-    bottom: 0;
     width: 100%;
-    background-color: #0E1117;
-    color: #FAFAFA;
     text-align: center;
-    padding: 10px;
-    font-size: 14px;
+    padding-top: 30px;
+    padding-bottom: 20px;
+    font-size: 12px;
+    color: #666;
     border-top: 1px solid #333;
-    z-index: 100;
+    margin-top: 50px;
+}
+.footer p {
+    margin: 0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -141,38 +142,39 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
             
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
-# --- CABEÇALHO ---
-st.title("🧪 Simulador de Eletroforese In Silico")
-st.markdown("**Laboratório de Biofármacos**")
-
-with st.expander("ℹ️ Como Usar e Formatos Aceitos"):
-    st.markdown("""
-    ### 📂 Formatos Aceitos
-    * **SnapGene (.dna):** Arquivos binários nativos.
-    * **FASTA (.fasta, .fa):** Formato padrão.
-    * **Texto:** Sequência crua (ATGC...).
-    
-    ### 🎨 Estilos Visuais
-    * **Neon:** Ladder Laranja, Amostras Verdes (Ideal para apresentações).
-    * **Profissional:** P&B fundo escuro.
-    * **Publicação:** P&B fundo branco.
-    """)
-
-# --- BARRA LATERAL ---
+# --- BARRA LATERAL (CONFIGURAÇÕES + AJUDA) ---
 with st.sidebar:
     st.header("Configurações")
     num_pocos = st.slider("Número de Poços", 1, 15, 3) 
     st.divider()
     
-    # --- SELETOR DE ESTILO ---
     estilo_gel = st.selectbox(
         "Estilo Visual", 
         ["Neon (Verde/Laranja)", "Profissional (Dark P&B)", "Publicação (Light P&B)"]
     )
     
     agarose = st.slider("Concentração de Agarose (%)", 0.5, 2.0, 1.0, 0.1)
-    st.caption("Ajustar a agarose altera o zoom vertical.")
+    
+    st.divider()
+    
+    # --- AJUDA DISCRETA NA SIDEBAR ---
+    with st.expander("❓ Ajuda & Formatos Aceitos"):
+        st.markdown("""
+        **Formatos Aceitos:**
+        * `.dna` (SnapGene)
+        * `.fasta` / `.fa`
+        * `.txt` (Sequência crua)
 
+        **Dicas:**
+        * **Plasmídeos:** Marque "Circular" para ver bandas *Supercoiled* e *Nicked*.
+        * **Zoom:** Use o slider de Agarose para focar em bandas pequenas ou grandes.
+        * **Nomes:** Digite o nome da amostra no campo "Nome no Gel" para sair na imagem.
+        """)
+
+# --- CONTEÚDO PRINCIPAL ---
+st.title("🧪 Simulador de Eletroforese In Silico")
+
+# Lógica principal de processamento
 dados_para_plotar = []
 labels_eixo_x = []
 nomes_ladders = [] 
@@ -185,8 +187,6 @@ for i in range(num_pocos):
     with col_atual:
         with st.expander(f"Poço {i+1}", expanded=(i==0)):
             tipo = st.radio(f"Conteúdo {i+1}:", ["Amostra", "Ladder"], key=f"t_{i}", horizontal=True)
-            
-            rotulo_padrao = str(i+1)
             
             if tipo == "Ladder":
                 lad = st.selectbox("Ladder:", list(LADDERS.keys()), key=f"l_{i}")
@@ -240,24 +240,23 @@ st.divider()
 
 if any(dados_para_plotar):
     
-    # --- CONFIGURAÇÃO DE CORES BASEADA NO ESTILO ---
+    # Cores baseadas no estilo
     if "Neon" in estilo_gel:
         bg_color = '#1e1e1e'
         text_color = 'white'
-        color_sample = '#00ff41'  # Verde Matrix/GFP
-        color_ladder = '#ff9900'  # Laranja
+        color_sample = '#00ff41'
+        color_ladder = '#ff9900'
     elif "Profissional" in estilo_gel:
         bg_color = '#1e1e1e'
         text_color = 'white'
         color_sample = 'white'
         color_ladder = 'white'
-    else: # Publicação (Light)
+    else: # Publicação
         bg_color = 'white'
         text_color = 'black'
         color_sample = 'black'
         color_ladder = 'black'
 
-    # Zoom dinâmico pela agarose
     min_view = 50 + (100 * (agarose - 0.5)) 
     max_view = 25000 / (agarose * 0.8)
 
@@ -267,11 +266,8 @@ if any(dados_para_plotar):
         x_center = i + 1
         eh_ladder = (nomes_ladders[i] is not None)
         
-        # Define a cor desta raia específica
-        if eh_ladder:
-            cor_atual = color_ladder
-        else:
-            cor_atual = color_sample
+        if eh_ladder: cor_atual = color_ladder
+        else: cor_atual = color_sample
 
         if lista_bandas:
              massa_total = sum([b[2] for b in lista_bandas]) if not eh_ladder else 1
@@ -313,7 +309,6 @@ if any(dados_para_plotar):
                     showlegend=False, hoverinfo='skip'
                 ))
 
-    # Layout Fixo (Pente de 15 poços)
     LARGURA_MINIMA = 15
     max_range = max(num_pocos, LARGURA_MINIMA) + 0.5
 
@@ -339,10 +334,10 @@ if any(dados_para_plotar):
 else:
     st.info("Adicione amostras para gerar o gel.")
 
-# --- RODAPÉ FIXO ---
+# --- RODAPÉ DISCRETO ---
 st.markdown("""
 <div class="footer">
     <p><b>Elton Ostetti</b> | Laboratório de Biofármacos - Instituto Butantan</p>
-    <p style="font-size: 11px; color: #888;">Desenvolvido para auxiliar pesquisas em clonagem molecular.</p>
+    <p>Desenvolvido para auxiliar pesquisas em clonagem molecular.</p>
 </div>
 """, unsafe_allow_html=True)
