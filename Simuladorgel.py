@@ -16,7 +16,6 @@ st.set_page_config(
 )
 
 # --- 2. SISTEMA DE TRADUÇÃO (DICIONÁRIO) ---
-# Aqui definimos todos os textos em Português (PT) e Inglês (EN)
 TEXTS = {
     "header_title": {
         "PT": "Simulador de Digestão Enzimática",
@@ -89,44 +88,44 @@ TEXTS = {
         "EN": "Select Ladder:"
     },
     "label_gel": {
-        "PT": "Rótulo no Gel:",
-        "EN": "Gel Label:"
+        "PT": "Rótulo:",
+        "EN": "Label:"
     },
     "tab_file": {
         "PT": "Arquivo",
         "EN": "File"
     },
     "tab_text": {
-        "PT": "Texto Manual",
-        "EN": "Manual Text"
+        "PT": "Texto",
+        "EN": "Text"
     },
     "upload_label": {
-        "PT": "Upload DNA/Fasta",
-        "EN": "Upload DNA/Fasta"
+        "PT": "Upload DNA",
+        "EN": "Upload DNA"
     },
     "paste_label": {
-        "PT": "Colar Sequência",
-        "EN": "Paste Sequence"
+        "PT": "Sequência",
+        "EN": "Sequence"
     },
     "check_circular": {
         "PT": "Circular?",
         "EN": "Circular?"
     },
     "sel_enzymes": {
-        "PT": "Enzimas de Restrição",
-        "EN": "Restriction Enzymes"
+        "PT": "Enzimas",
+        "EN": "Enzymes"
     },
     "result_title": {
         "PT": "Resultado da Eletroforese",
         "EN": "Electrophoresis Result"
     },
     "export_expander": {
-        "PT": "Exportar Dados do Relatório",
-        "EN": "Export Report Data"
+        "PT": "Exportar Dados",
+        "EN": "Export Data"
     },
     "btn_download": {
-        "PT": "Baixar Tabela (.csv)",
-        "EN": "Download Table (.csv)"
+        "PT": "Baixar .csv",
+        "EN": "Download .csv"
     },
     "empty_msg": {
         "PT": "Para começar, adicione amostras nos cartões acima.",
@@ -143,68 +142,88 @@ TEXTS = {
     "institute": {
         "PT": "Instituto Butantan",
         "EN": "Butantan Institute"
+    },
+    "pref_lang": {
+        "PT": "Idioma / Language",
+        "EN": "Language"
     }
 }
 
-# --- 3. ESTILO CSS (TURQUESA + MINIMALISTA) ---
+# --- 3. ESTILO CSS (TURQUESA + SLIDER PERSONALIZADO + 4 COLUNAS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     /* Fundo Geral */
     .stApp {
-        background: linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 100%); /* Azul gelo muito suave */
+        background: linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 100%);
         font-family: 'Inter', sans-serif;
     }
 
     /* Sidebar - TURQUESA SUAVE */
     section[data-testid="stSidebar"] {
-        background-color: #E0F7FA; /* Turquesa Claro */
+        background-color: #E0F7FA;
         border-right: 1px solid #B2EBF2;
     }
 
-    /* Títulos e Textos */
+    /* --- SLIDER PERSONALIZADO (TURQUESA) --- */
+    /* Remove o laranja padrão do Streamlit */
+    div[data-baseweb="slider"] div[class*="StyledThumb"] {
+        background-color: #0F766E !important; /* Turquesa Escuro */
+        border-color: #0F766E !important;
+    }
+    div[data-baseweb="slider"] div[class*="StyledTrack"] > div {
+        background-color: #0F766E !important; /* Parte preenchida do slider */
+    }
+    div[data-baseweb="slider"] div[class*="StyledTrack"] {
+        background-color: #B2EBF2 !important; /* Fundo do slider (parte vazia) */
+    }
+
+    /* Títulos */
     h1, h2, h3 {
         color: #0F172A !important;
         font-weight: 700 !important;
         letter-spacing: -0.02em;
     }
     
-    /* Cards (Expanders) - MINIMALISTAS */
+    /* Cards (Expanders) Compactos */
     .stExpander {
         background-color: #FFFFFF;
-        border-radius: 8px !important; /* Bordas menos arredondadas */
+        border-radius: 6px !important;
         border: 1px solid #E2E8F0 !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important; /* Sombra sutil */
-        margin-bottom: 0.5rem; /* Menos espaço entre cards */
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        margin-bottom: 0.5rem;
     }
     
     .stExpander:hover {
-        border-color: #4F46E5 !important;
+        border-color: #0F766E !important; /* Turquesa no hover */
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
     }
 
-    /* Reduzir Padding interno dos cards para ficarem menos "largos/gordos" */
+    /* Reduzir padding para caber na coluna estreita */
     div[data-testid="stExpanderDetails"] {
-        padding-top: 0.5rem !important;
-        padding-bottom: 1rem !important;
+        padding: 0.5rem !important;
     }
 
     /* Botões */
     .stButton > button {
-        background-color: #4F46E5;
+        background-color: #0F766E; /* Turquesa Escuro */
         color: white;
         border-radius: 6px;
         font-weight: 500;
         border: none;
-        box-shadow: none;
     }
     .stButton > button:hover {
-        background-color: #4338CA;
+        background-color: #0d6e66;
         color: white;
     }
+    
+    /* Checkbox e Radio Focus Color */
+    span[data-baseweb="checkbox"] div {
+        background-color: #0F766E !important;
+    }
 
-    /* Rodapé Minimalista */
+    /* Rodapé */
     .footer {
         width: 100%;
         text-align: center;
@@ -212,13 +231,13 @@ st.markdown("""
         font-size: 11px;
         color: #64748B;
         border-top: 1px solid #CBD5E1;
-        margin-top: 40px;
+        margin-top: 10px;
         opacity: 0.8;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BACKEND (LÓGICA) ---
+# --- 4. BACKEND ---
 
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
@@ -328,8 +347,12 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
 
 # --- 5. INTERFACE DO USUÁRIO ---
 
+# Variável de estado para idioma (para atualizar quando mudar)
+if 'lang' not in st.session_state:
+    st.session_state.lang = "PT"
+
 with st.sidebar:
-    # Título Minimalista
+    # Título Minimalista Turquesa
     st.markdown("""
     <div style="text-align: left; margin-bottom: 20px;">
         <h1 style="font-family: 'Inter', sans-serif; font-weight: 800; color: #0F766E; font-size: 26px; letter-spacing: -1px; margin:0;">
@@ -338,16 +361,15 @@ with st.sidebar:
         <p style="font-size: 10px; color: #0F766E; opacity: 0.7; margin:0; text-transform: uppercase; letter-spacing: 1px;">Studio</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Seletor de Idioma
-    idioma_selecionado = st.selectbox("", ["Português", "English"], label_visibility="collapsed")
-    lang = "PT" if idioma_selecionado == "Português" else "EN"
-    
-    st.divider()
+    st.markdown("---")
+
+    # Obtém o idioma selecionado no final para aplicar nos textos
+    # Mas precisamos definir uma variável padrão primeiro
+    lang = st.session_state.lang
 
     st.caption(TEXTS["sidebar_config"][lang])
     
-    num_pocos = st.slider(TEXTS["sidebar_wells"][lang], 1, 15, 3)
+    num_pocos = st.slider(TEXTS["sidebar_wells"][lang], 1, 15, 4) # Default 4 para testar o grid
     agarose = st.slider(TEXTS["sidebar_agarose"][lang], 0.5, 2.0, 1.0, 0.1)
     
     st.divider()
@@ -363,10 +385,22 @@ with st.sidebar:
     with st.expander(f"ℹ️ {TEXTS['guide_title'][lang]}"):
         st.markdown(TEXTS["guide_content"][lang])
     
-    # Rodapé da Sidebar
-    st.markdown("---")
+    # --- ÁREA DE RODAPÉ (IDIOMA + CRÉDITOS) ---
+    st.markdown("---") # Espaço flexível
+    
+    # Seletor de Idioma
+    st.caption(TEXTS["pref_lang"][lang])
+    idioma_selecionado = st.selectbox("Lang", ["Português", "English"], label_visibility="collapsed")
+    
+    # Atualiza estado do idioma
+    novo_lang = "PT" if idioma_selecionado == "Português" else "EN"
+    if novo_lang != st.session_state.lang:
+        st.session_state.lang = novo_lang
+        st.rerun() # Recarrega a página para aplicar a tradução instantaneamente
+
+    # Créditos
     st.markdown(f"""
-    <div style="font-size: 11px; color: #374151; line-height: 1.4;">
+    <div style="font-size: 11px; color: #334155; line-height: 1.4; margin-top: 15px;">
         <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
         {TEXTS['lab_name'][lang]}<br>
         {TEXTS['institute'][lang]}
@@ -384,16 +418,17 @@ dados_para_plotar = []
 labels_eixo_x = []
 nomes_ladders = [] 
 
-cols = st.columns(2)
+# ALTERAÇÃO: 4 Colunas para cartões mais estreitos
+cols = st.columns(4)
 
 for i in range(num_pocos):
-    col_atual = cols[i % 2]
+    col_atual = cols[i % 4] # Grid de 4 colunas
     with col_atual:
-        # Título do Card sem emoji, apenas número para ser sério
-        with st.expander(f"{TEXTS['well_title'][lang]} {i+1}", expanded=(i==0)):
+        # Título do Card simplificado
+        with st.expander(f"🔹 {TEXTS['well_title'][lang]} {i+1}", expanded=(i==0)):
             # Opções de tipo
             opcoes_tipo = [TEXTS['opt_sample'][lang], TEXTS['opt_ladder'][lang]]
-            tipo_display = st.radio(f"{TEXTS['content_label'][lang]} {i+1}:", options=opcoes_tipo, key=f"t_{i}", horizontal=True, label_visibility="collapsed")
+            tipo_display = st.radio("Tipo", options=opcoes_tipo, key=f"t_{i}", horizontal=True, label_visibility="collapsed")
             
             tipo = "Ladder" if tipo_display == TEXTS['opt_ladder'][lang] else "Amostra"
             rotulo_padrao = str(i+1)
@@ -416,29 +451,29 @@ for i in range(num_pocos):
                 })
             else:
                 nomes_ladders.append(None)
-                tab_f, tab_t = st.tabs([f"📂 {TEXTS['tab_file'][lang]}", f"📝 {TEXTS['tab_text'][lang]}"])
+                tab_f, tab_t = st.tabs([f"📂", f"📝"]) # Abas compactas (só ícone) para caber no cartão estreito
                 seq, nome_arquivo = "", ""
                 
                 with tab_f:
-                    up = st.file_uploader(TEXTS['upload_label'][lang], type=['dna', 'fasta', 'txt', 'fa'], key=f"u_{i}")
+                    up = st.file_uploader(TEXTS['upload_label'][lang], type=['dna', 'fasta', 'txt', 'fa'], key=f"u_{i}", label_visibility="collapsed")
                     if up: 
                         nome_arquivo, seq = processar_upload(up)
                         if nome_arquivo == "Erro": 
                             st.error(seq); seq = ""
                 with tab_t:
-                    txt = st.text_area(TEXTS['paste_label'][lang], height=70, key=f"tx_{i}")
+                    txt = st.text_area(TEXTS['paste_label'][lang], height=70, key=f"tx_{i}", label_visibility="collapsed", placeholder="ATGC...")
                     if txt and not seq: 
                         nome_t, seq_t = processar_texto_manual(txt)
                         if nome_t != "Seq Manual": nome_arquivo = nome_t
                         seq = seq_t
                 
                 st.markdown("---")
-                c1, c2 = st.columns([1, 2])
-                circ = c1.checkbox(TEXTS['check_circular'][lang], True, key=f"c_{i}")
-                enz = c2.multiselect(TEXTS['sel_enzymes'][lang], TODAS_ENZIMAS, key=f"e_{i}")
+                # Enzimas ocupam largura total no cartão estreito
+                circ = st.checkbox(TEXTS['check_circular'][lang], True, key=f"c_{i}")
+                enz = st.multiselect(TEXTS['sel_enzymes'][lang], TODAS_ENZIMAS, key=f"e_{i}")
                 
                 val_rotulo = nome_arquivo if nome_arquivo else str(i+1)
-                rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value=val_rotulo[:12], key=f"lbl_{i}")
+                rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value=val_rotulo[:10], key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
 
                 if seq:
@@ -458,7 +493,7 @@ for i in range(num_pocos):
                         
                     except Exception as e:
                         dados_para_plotar.append([])
-                        st.error(f"Error: {e}")
+                        st.error(f"Error")
                 else:
                     dados_para_plotar.append([])
                     relatorio_dados.append({
@@ -474,12 +509,12 @@ st.markdown(f"### {TEXTS['result_title'][lang]}")
 
 if any(dados_para_plotar):
     
-    # Cores (Ordem corrigida no selectbox, lógica ajustada aqui)
+    # Cores
     if "Neon" in estilo_gel:
         bg_color = '#111827'; text_color = 'white'; color_sample = '#00ff41'; color_ladder = '#ff9900'
-    elif "Profissional" in estilo_gel: # Dark P&B (Padrão)
+    elif "Profissional" in estilo_gel: 
         bg_color = '#000000'; text_color = 'white'; color_sample = 'white'; color_ladder = 'white'
-    else: # Publicação Light
+    else: 
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
     min_view = 50 + (100 * (agarose - 0.5)) 
@@ -568,6 +603,6 @@ else:
 # --- RODAPÉ ---
 st.markdown("""
 <div class="footer">
-    <p><b>BioSpark</b></p>
+    <p><b>BioSpark</b> | Instituto Butantan</p>
 </div>
 """, unsafe_allow_html=True)
