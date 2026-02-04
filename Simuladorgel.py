@@ -7,49 +7,221 @@ from Bio.Restriction import RestrictionBatch, Analysis, CommOnly
 from io import StringIO, BytesIO
 from Bio import SeqIO
 
-# --- CONFIGURAÇÃO INICIAL DA PÁGINA ---
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Simulador de Eletroforese", 
-    layout="wide", 
+    page_title="BioSpark Studio",
+    layout="wide",
     page_icon="🧬",
     initial_sidebar_state="expanded"
 )
 
-# --- CSS PERSONALIZADO (Ajustes Visuais) ---
+# --- 2. SISTEMA DE TRADUÇÃO (DICIONÁRIO) ---
+# Aqui definimos todos os textos em Português (PT) e Inglês (EN)
+TEXTS = {
+    "header_title": {
+        "PT": "Simulador de Digestão Enzimática",
+        "EN": "Enzymatic Digestion Simulator"
+    },
+    "header_sub": {
+        "PT": "Configure suas amostras abaixo para visualizar o resultado da digestão in silico.",
+        "EN": "Configure your samples below to visualize the in silico digestion result."
+    },
+    "sidebar_config": {
+        "PT": "CONFIGURAÇÕES",
+        "EN": "SETTINGS"
+    },
+    "sidebar_wells": {
+        "PT": "Número de Poços",
+        "EN": "Number of Wells"
+    },
+    "sidebar_agarose": {
+        "PT": "Agarose (%)",
+        "EN": "Agarose (%)"
+    },
+    "sidebar_visual": {
+        "PT": "VISUALIZAÇÃO",
+        "EN": "VISUALIZATION"
+    },
+    "sidebar_theme": {
+        "PT": "Tema do Gel",
+        "EN": "Gel Theme"
+    },
+    "guide_title": {
+        "PT": "Guia Rápido",
+        "EN": "Quick Guide"
+    },
+    "guide_content": {
+        "PT": """
+        **1. Setup:** Ajuste poços e agarose.
+        **2. Amostras:**
+        * Faça upload de `.dna` ou `.fasta`.
+        * Para plasmídeos, marque **Circular**.
+        * Escolha as enzimas.
+        **3. Resultado:** O gel é gerado automaticamente.
+        """,
+        "EN": """
+        **1. Setup:** Adjust wells and agarose.
+        **2. Samples:**
+        * Upload `.dna` or `.fasta`.
+        * For plasmids, check **Circular**.
+        * Select enzymes.
+        **3. Result:** The gel is generated automatically.
+        """
+    },
+    "well_title": {
+        "PT": "Poço",
+        "EN": "Well"
+    },
+    "content_label": {
+        "PT": "Conteúdo",
+        "EN": "Content"
+    },
+    "opt_sample": {
+        "PT": "Amostra",
+        "EN": "Sample"
+    },
+    "opt_ladder": {
+        "PT": "Ladder",
+        "EN": "Ladder"
+    },
+    "sel_ladder": {
+        "PT": "Selecione o Ladder:",
+        "EN": "Select Ladder:"
+    },
+    "label_gel": {
+        "PT": "Rótulo no Gel:",
+        "EN": "Gel Label:"
+    },
+    "tab_file": {
+        "PT": "Arquivo",
+        "EN": "File"
+    },
+    "tab_text": {
+        "PT": "Texto Manual",
+        "EN": "Manual Text"
+    },
+    "upload_label": {
+        "PT": "Upload DNA/Fasta",
+        "EN": "Upload DNA/Fasta"
+    },
+    "paste_label": {
+        "PT": "Colar Sequência",
+        "EN": "Paste Sequence"
+    },
+    "check_circular": {
+        "PT": "Circular?",
+        "EN": "Circular?"
+    },
+    "sel_enzymes": {
+        "PT": "Enzimas de Restrição",
+        "EN": "Restriction Enzymes"
+    },
+    "result_title": {
+        "PT": "Resultado da Eletroforese",
+        "EN": "Electrophoresis Result"
+    },
+    "export_expander": {
+        "PT": "Exportar Dados do Relatório",
+        "EN": "Export Report Data"
+    },
+    "btn_download": {
+        "PT": "Baixar Tabela (.csv)",
+        "EN": "Download Table (.csv)"
+    },
+    "empty_msg": {
+        "PT": "Para começar, adicione amostras nos cartões acima.",
+        "EN": "To start, add samples in the cards above."
+    },
+    "created_by": {
+        "PT": "Criado por",
+        "EN": "Created by"
+    },
+    "lab_name": {
+        "PT": "Laboratório de Biofármacos",
+        "EN": "Biopharmaceuticals Laboratory"
+    },
+    "institute": {
+        "PT": "Instituto Butantan",
+        "EN": "Butantan Institute"
+    }
+}
+
+# --- 3. ESTILO CSS (TURQUESA + MINIMALISTA) ---
 st.markdown("""
 <style>
-/* 1. Rodapé Discreto */
-.footer {
-    width: 100%;
-    text-align: center;
-    padding-top: 30px;
-    padding-bottom: 20px;
-    font-size: 12px;
-    color: #666;
-    border-top: 1px solid #333;
-    margin-top: 50px;
-}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* 2. Remover a cor Laranja dos Sliders (Forçar Cinza/Preto) */
-div.stSlider > div[data-baseweb="slider"] > div > div > div[role="slider"]{
-    background-color: #555555 !important; /* Botão do slider */
-    border-color: #555555 !important;
-}
-div.stSlider > div[data-baseweb="slider"] > div > div > div {
-    background-color: #888888 !important; /* Barra preenchida */
-}
+    /* Fundo Geral */
+    .stApp {
+        background: linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 100%); /* Azul gelo muito suave */
+        font-family: 'Inter', sans-serif;
+    }
 
-/* 3. Ajuste de fontes e espaçamentos gerais */
-.block-container {
-    padding-top: 2rem;
-}
+    /* Sidebar - TURQUESA SUAVE */
+    section[data-testid="stSidebar"] {
+        background-color: #E0F7FA; /* Turquesa Claro */
+        border-right: 1px solid #B2EBF2;
+    }
+
+    /* Títulos e Textos */
+    h1, h2, h3 {
+        color: #0F172A !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.02em;
+    }
+    
+    /* Cards (Expanders) - MINIMALISTAS */
+    .stExpander {
+        background-color: #FFFFFF;
+        border-radius: 8px !important; /* Bordas menos arredondadas */
+        border: 1px solid #E2E8F0 !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important; /* Sombra sutil */
+        margin-bottom: 0.5rem; /* Menos espaço entre cards */
+    }
+    
+    .stExpander:hover {
+        border-color: #4F46E5 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Reduzir Padding interno dos cards para ficarem menos "largos/gordos" */
+    div[data-testid="stExpanderDetails"] {
+        padding-top: 0.5rem !important;
+        padding-bottom: 1rem !important;
+    }
+
+    /* Botões */
+    .stButton > button {
+        background-color: #4F46E5;
+        color: white;
+        border-radius: 6px;
+        font-weight: 500;
+        border: none;
+        box-shadow: none;
+    }
+    .stButton > button:hover {
+        background-color: #4338CA;
+        color: white;
+    }
+
+    /* Rodapé Minimalista */
+    .footer {
+        width: 100%;
+        text-align: center;
+        padding: 20px 0;
+        font-size: 11px;
+        color: #64748B;
+        border-top: 1px solid #CBD5E1;
+        margin-top: 40px;
+        opacity: 0.8;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Converte enzimas para string
+# --- 4. BACKEND (LÓGICA) ---
+
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
-# Dados de Ladders
 LADDERS = {
     "1kb Plus DNA Ladder": [100, 200, 300, 400, 500, 650, 850, 1000, 1650, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 12000],
     "1kb DNA Ladder (Genérico)": [250, 500, 750, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 6000, 8000, 10000],
@@ -154,51 +326,59 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
             
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
-# --- BARRA LATERAL ---
+# --- 5. INTERFACE DO USUÁRIO ---
+
 with st.sidebar:
-    st.header("Configurações")
+    # Título Minimalista
+    st.markdown("""
+    <div style="text-align: left; margin-bottom: 20px;">
+        <h1 style="font-family: 'Inter', sans-serif; font-weight: 800; color: #0F766E; font-size: 26px; letter-spacing: -1px; margin:0;">
+            BioSpark
+        </h1>
+        <p style="font-size: 10px; color: #0F766E; opacity: 0.7; margin:0; text-transform: uppercase; letter-spacing: 1px;">Studio</p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # 1. Número de Poços (Slider agora deve ficar Cinza)
-    num_pocos = st.slider("Número de Poços", 1, 15, 3) 
-    st.divider()
-    
-    # 2. Concentração de Agarose
-    agarose = st.slider("Concentração de Agarose (%)", 0.5, 2.0, 1.0, 0.1)
-    st.caption("Ajustar a agarose altera o zoom vertical.")
+    # Seletor de Idioma
+    idioma_selecionado = st.selectbox("", ["Português", "English"], label_visibility="collapsed")
+    lang = "PT" if idioma_selecionado == "Português" else "EN"
     
     st.divider()
 
-    # 3. Estilo Visual
+    st.caption(TEXTS["sidebar_config"][lang])
+    
+    num_pocos = st.slider(TEXTS["sidebar_wells"][lang], 1, 15, 3)
+    agarose = st.slider(TEXTS["sidebar_agarose"][lang], 0.5, 2.0, 1.0, 0.1)
+    
+    st.divider()
+    
+    st.caption(TEXTS["sidebar_visual"][lang])
     estilo_gel = st.selectbox(
-        "Estilo Visual", 
+        TEXTS["sidebar_theme"][lang], 
         ["Profissional (Dark P&B)", "Publicação (Light P&B)", "Neon (Verde/Laranja)"]
     )
     
-    st.divider()
+    st.markdown("---")
     
-    # --- GUIA DE USO (Texto limpo, sem ícones confusos) ---
-    with st.expander("❓ Guia de Uso & Formatos"):
-        st.markdown("""
-        **Formatos Aceitos:**
-        - SnapGene (.dna)
-        - FASTA (.fasta, .fa)
-        - Texto Puro (.txt)
-        
-        **Como Usar:**
-        1. Defina o número de poços e agarose.
-        2. Escolha se é Amostra ou Ladder.
-        3. Para amostras, faça upload ou cole a sequência.
-        4. Selecione se é Circular e as Enzimas.
-        
-        **Dicas:**
-        - Use o campo "Nome da Amostra" para rotular o gel.
-        - Baixe a tabela de resultados no final da página.
-        """)
+    with st.expander(f"ℹ️ {TEXTS['guide_title'][lang]}"):
+        st.markdown(TEXTS["guide_content"][lang])
+    
+    # Rodapé da Sidebar
+    st.markdown("---")
+    st.markdown(f"""
+    <div style="font-size: 11px; color: #374151; line-height: 1.4;">
+        <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
+        {TEXTS['lab_name'][lang]}<br>
+        {TEXTS['institute'][lang]}
+    </div>
+    """, unsafe_allow_html=True)
 
-# --- CONTEÚDO PRINCIPAL ---
-st.title("🧪 Simulador de Eletroforese In Silico")
+# --- ÁREA PRINCIPAL ---
 
-# Estrutura para guardar dados para o relatório
+st.markdown(f"# {TEXTS['header_title'][lang]}")
+st.markdown(TEXTS["header_sub"][lang])
+st.markdown(" ")
+
 relatorio_dados = []
 dados_para_plotar = []
 labels_eixo_x = []
@@ -209,21 +389,24 @@ cols = st.columns(2)
 for i in range(num_pocos):
     col_atual = cols[i % 2]
     with col_atual:
-        with st.expander(f"Poço {i+1}", expanded=(i==0)):
-            tipo = st.radio(f"Conteúdo {i+1}:", ["Amostra", "Ladder"], key=f"t_{i}", horizontal=True)
+        # Título do Card sem emoji, apenas número para ser sério
+        with st.expander(f"{TEXTS['well_title'][lang]} {i+1}", expanded=(i==0)):
+            # Opções de tipo
+            opcoes_tipo = [TEXTS['opt_sample'][lang], TEXTS['opt_ladder'][lang]]
+            tipo_display = st.radio(f"{TEXTS['content_label'][lang]} {i+1}:", options=opcoes_tipo, key=f"t_{i}", horizontal=True, label_visibility="collapsed")
             
+            tipo = "Ladder" if tipo_display == TEXTS['opt_ladder'][lang] else "Amostra"
             rotulo_padrao = str(i+1)
             
             if tipo == "Ladder":
-                lad = st.selectbox("Ladder:", list(LADDERS.keys()), key=f"l_{i}")
+                lad = st.selectbox(TEXTS['sel_ladder'][lang], list(LADDERS.keys()), key=f"l_{i}")
                 ladder_data = [(tam, "Ladder", tam) for tam in LADDERS[lad]]
                 dados_para_plotar.append(ladder_data)
                 
-                rotulo_custom = st.text_input("Nome da Amostra:", value="M", key=f"lbl_{i}")
+                rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value="M", key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
                 nomes_ladders.append(lad)
                 
-                # Dados para CSV
                 relatorio_dados.append({
                     "Poço": i+1,
                     "Identificação": rotulo_custom,
@@ -233,30 +416,29 @@ for i in range(num_pocos):
                 })
             else:
                 nomes_ladders.append(None)
-                
-                # --- ABAS COM TEXTO CLARO ---
-                tab_f, tab_t = st.tabs(["📂 Upload de Arquivo", "📝 Texto Manual"])
+                tab_f, tab_t = st.tabs([f"📂 {TEXTS['tab_file'][lang]}", f"📝 {TEXTS['tab_text'][lang]}"])
                 seq, nome_arquivo = "", ""
                 
                 with tab_f:
-                    up = st.file_uploader("Arraste seu arquivo aqui (.dna, .fasta)", type=['dna', 'fasta', 'txt', 'fa'], key=f"u_{i}")
+                    up = st.file_uploader(TEXTS['upload_label'][lang], type=['dna', 'fasta', 'txt', 'fa'], key=f"u_{i}")
                     if up: 
                         nome_arquivo, seq = processar_upload(up)
                         if nome_arquivo == "Erro": 
                             st.error(seq); seq = ""
                 with tab_t:
-                    txt = st.text_area("Cole a sequência (ATGC...)", height=70, key=f"tx_{i}")
+                    txt = st.text_area(TEXTS['paste_label'][lang], height=70, key=f"tx_{i}")
                     if txt and not seq: 
                         nome_t, seq_t = processar_texto_manual(txt)
                         if nome_t != "Seq Manual": nome_arquivo = nome_t
                         seq = seq_t
                 
-                c1, c2 = st.columns(2)
-                circ = c1.checkbox("Circular?", True, key=f"c_{i}")
-                enz = c2.multiselect("Enzimas", TODAS_ENZIMAS, key=f"e_{i}")
+                st.markdown("---")
+                c1, c2 = st.columns([1, 2])
+                circ = c1.checkbox(TEXTS['check_circular'][lang], True, key=f"c_{i}")
+                enz = c2.multiselect(TEXTS['sel_enzymes'][lang], TODAS_ENZIMAS, key=f"e_{i}")
                 
                 val_rotulo = nome_arquivo if nome_arquivo else str(i+1)
-                rotulo_custom = st.text_input("Nome da Amostra:", value=val_rotulo[:12], key=f"lbl_{i}")
+                rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value=val_rotulo[:12], key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
 
                 if seq:
@@ -276,7 +458,7 @@ for i in range(num_pocos):
                         
                     except Exception as e:
                         dados_para_plotar.append([])
-                        st.error(f"Erro no cálculo: {e}")
+                        st.error(f"Error: {e}")
                 else:
                     dados_para_plotar.append([])
                     relatorio_dados.append({
@@ -287,16 +469,17 @@ for i in range(num_pocos):
                         "Bandas (pb)": "-"
                     })
 
-st.divider()
+st.markdown(" ") 
+st.markdown(f"### {TEXTS['result_title'][lang]}")
 
 if any(dados_para_plotar):
     
-    # Cores
+    # Cores (Ordem corrigida no selectbox, lógica ajustada aqui)
     if "Neon" in estilo_gel:
-        bg_color = '#1e1e1e'; text_color = 'white'; color_sample = '#00ff41'; color_ladder = '#ff9900'
-    elif "Profissional" in estilo_gel:
-        bg_color = '#1e1e1e'; text_color = 'white'; color_sample = 'white'; color_ladder = 'white'
-    else: 
+        bg_color = '#111827'; text_color = 'white'; color_sample = '#00ff41'; color_ladder = '#ff9900'
+    elif "Profissional" in estilo_gel: # Dark P&B (Padrão)
+        bg_color = '#000000'; text_color = 'white'; color_sample = 'white'; color_ladder = 'white'
+    else: # Publicação Light
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
     min_view = 50 + (100 * (agarose - 0.5)) 
@@ -367,27 +550,24 @@ if any(dados_para_plotar):
         )
     )
     
-    fig.add_annotation(x=-0.05, y=1, xref="paper", yref="paper", text="pb", showarrow=False, font=dict(color=text_color, size=14, family="Arial Black"))
     st.plotly_chart(fig, use_container_width=True)
     
-    # --- BOTÃO DISCRETO DE EXPORTAÇÃO ---
-    with st.expander("📥 Exportar Dados"):
+    with st.expander(f"📥 {TEXTS['export_expander'][lang]}"):
         df_resultados = pd.DataFrame(relatorio_dados)
         csv = df_resultados.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="Baixar Tabela (.csv)",
+            label=TEXTS['btn_download'][lang],
             data=csv,
-            file_name='gel_resultado.csv',
+            file_name='gel_result.csv',
             mime='text/csv',
         )
 
 else:
-    st.info("Adicione amostras para gerar o gel.")
+    st.info(TEXTS['empty_msg'][lang])
 
-# --- RODAPÉ DISCRETO ---
+# --- RODAPÉ ---
 st.markdown("""
 <div class="footer">
-    <p><b>Elton Ostetti</b> | Laboratório de Biofármacos - Instituto Butantan</p>
-    <p>Desenvolvido para auxiliar pesquisas em clonagem molecular.</p>
+    <p><b>BioSpark</b></p>
 </div>
 """, unsafe_allow_html=True)
