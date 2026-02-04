@@ -9,22 +9,21 @@ from Bio import SeqIO
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="BioLab Studio", 
-    layout="wide", 
+    page_title="BioSpark Studio",
+    layout="wide",
     page_icon="🧬",
     initial_sidebar_state="expanded"
 )
 
-# --- 2. ESTÉTICA BOHRIUM (CSS HACK) ---
-# Este bloco transforma o visual padrão do Streamlit no visual "SaaS Moderno"
+# --- 2. ESTÉTICA BOHRIUM TURQUESA (CSS HACK) ---
 st.markdown("""
 <style>
     /* Importar fonte Inter (Padrão moderno) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
-    /* Fundo Geral com Degradê Suave */
+    /* Fundo Geral com Degradê Turquesa Intenso */
     .stApp {
-        background: linear-gradient(180deg, #F5F7F9 0%, #FFFFFF 100%);
+        background: linear-gradient(180deg, #E0F7FA 0%, #FFFFFF 100%);
         font-family: 'Inter', sans-serif;
     }
 
@@ -34,7 +33,7 @@ st.markdown("""
         border-right: 1px solid #E5E7EB;
         box-shadow: 4px 0 15px rgba(0,0,0,0.02);
     }
-    
+
     /* Títulos e Textos */
     h1, h2, h3 {
         color: #111827 !important;
@@ -54,7 +53,7 @@ st.markdown("""
         margin-bottom: 1rem;
         transition: all 0.2s ease-in-out;
     }
-    
+
     .stExpander:hover {
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08) !important;
         border-color: #4F46E5 !important; /* Destaque Roxo ao passar o mouse */
@@ -88,21 +87,20 @@ st.markdown("""
         border: 1px solid #D1D5DB;
         color: #111827;
     }
-    
+
     /* Rodapé */
     .footer {
         width: 100%;
         text-align: center;
-        padding-top: 30px;
+        padding-top: 20px;
         padding-bottom: 20px;
         font-size: 12px;
         color: #9CA3AF;
         border-top: 1px solid #E5E7EB;
-        margin-top: 50px;
+        margin-top: 30px;
     }
 </style>
 """, unsafe_allow_html=True)
-
 
 # --- 3. LÓGICA DO SISTEMA (MANTIDA IGUAL) ---
 
@@ -121,7 +119,7 @@ def processar_upload(input_data):
     try:
         nome_arquivo = input_data.name
         nome_sugerido = nome_arquivo.rsplit('.', 1)[0]
-        
+
         if nome_arquivo.lower().endswith('.dna'):
             try:
                 bytes_io = BytesIO(input_data.getvalue())
@@ -142,7 +140,7 @@ def processar_upload(input_data):
                 record = next(iterator)
                 return record.id if record.id else nome_sugerido, str(record.seq).upper()
             except:
-                pass 
+                pass
 
         linhas = conteudo.splitlines()
         seq_limpa = ""
@@ -150,9 +148,9 @@ def processar_upload(input_data):
             linha = linha.strip()
             if not linha or linha.startswith(">") or linha.startswith(";"): continue
             seq_limpa += linha
-        
+
         seq_final = "".join(seq_limpa.split()).upper()
-        if any(c not in "ATGCNRYKMSWBDHV" for c in seq_final[:100]): 
+        if any(c not in "ATGCNRYKMSWBDHV" for c in seq_final[:100]):
              return "Erro", "Arquivo inválido."
 
         return nome_sugerido, seq_final
@@ -178,25 +176,25 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
 
     seq_obj = Seq(sequencia)
     tamanho_total = len(seq_obj)
-    
+
     if eh_circular and not enzimas:
         return [
             (tamanho_total * 1.4, "Nicked (Relaxed)", tamanho_total),
             (tamanho_total * 0.7, "Supercoiled", tamanho_total)
         ]
-    
-    if not enzimas: 
+
+    if not enzimas:
         return [(tamanho_total, "Linear", tamanho_total)]
-    
+
     rb = RestrictionBatch(enzimas)
     analise = Analysis(rb, seq_obj, linear=not eh_circular)
     cortes = analise.full()
     locais = sorted(list(set([local for lista in cortes.values() for local in lista])))
-    
-    if not locais: 
+
+    if not locais:
         tipo = "Circ. (Sítio Ausente)" if eh_circular else "Lin. (Não Cortado)"
         return [(tamanho_total, tipo, tamanho_total)]
-        
+
     fragmentos = []
     if not eh_circular:
         prev = 0
@@ -211,31 +209,38 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
             for i in range(len(locais)-1):
                 fragmentos.append(locais[i+1] - locais[i])
             fragmentos.append((tamanho_total - locais[-1]) + locais[0])
-            
+
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
 # --- BARRA LATERAL (VISUAL CLEAN) ---
 with st.sidebar:
-    st.title("🧬 **BioLab**") # Título mais clean
+    # Título Moderno e Futurista
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="font-family: 'Inter', sans-serif; font-weight: 700; color: #4F46E5; font-size: 28px; letter-spacing: 1px;">
+            🧬 BioSpark
+        </h1>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("---")
-    
+
     st.caption("CONFIGURAÇÕES GERAIS")
-    
+
     # 1. Número de Poços
-    num_pocos = st.slider("Número de Poços", 1, 15, 3) 
-    
+    num_pocos = st.slider("Número de Poços", 1, 15, 3)
+
     # 2. Concentração de Agarose
     agarose = st.slider("Agarose (%)", 0.5, 2.0, 1.0, 0.1)
-    
+
     st.caption("VISUALIZAÇÃO")
-    # 3. Estilo Visual
+    # 3. Estilo Visual (Ordem corrigida)
     estilo_gel = st.selectbox(
-        "Tema do Gel", 
-        ["Neon (Verde/Laranja)", "Profissional (Dark P&B)", "Publicação (Light P&B)"]
+        "Tema do Gel",
+        ["Profissional (Dark P&B)", "Publicação (Light P&B)", "Neon (Verde/Laranja)"]
     )
-    
+
     st.markdown("---")
-    
+
     # --- GUIA DE USO ---
     with st.expander("❓ Guia Rápido"):
         st.markdown("""
@@ -246,22 +251,33 @@ with st.sidebar:
         * Escolha as enzimas.
         **3. Resultado:** O gel é gerado automaticamente.
         """)
-        
+
+    st.markdown("---")
+    # --- IDIOMA E CRÉDITOS ---
+    st.caption("PREFERÊNCIAS")
+    idioma = st.selectbox("Idioma / Language", ["Português", "English"])
     st.markdown(" ")
-    st.markdown("**Versão 2.1 (Bohrium UI)**")
+    st.markdown("""
+    <div class="footer">
+        <p style="margin: 0; font-weight: 600;">Criado por Elton Ostetti</p>
+        <p style="margin: 0;">Laboratório de Biofármacos</p>
+        <p style="margin: 0;">Instituto Butantan</p>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 # --- CONTEÚDO PRINCIPAL ---
 
-# Cabeçalho Moderno
-st.markdown("# Simulador de Eletroforese")
-st.markdown("Configure suas amostras abaixo para visualizar o gel in silico.")
+# Cabeçalho Moderno (Corrigido para Digestão Enzimática)
+st.markdown("# Simulador de Digestão Enzimática de DNA")
+st.markdown("Configure suas amostras abaixo para visualizar o resultado da digestão in silico.")
 st.markdown(" ") # Espaço extra
 
 # Estrutura para guardar dados para o relatório
 relatorio_dados = []
 dados_para_plotar = []
 labels_eixo_x = []
-nomes_ladders = [] 
+nomes_ladders = []
 
 cols = st.columns(2)
 
@@ -272,18 +288,18 @@ for i in range(num_pocos):
         # O st.expander agora parece um "Card" branco flutuante
         with st.expander(f"🔹 Poço {i+1}", expanded=(i==0)):
             tipo = st.radio(f"Conteúdo {i+1}:", ["Amostra", "Ladder"], key=f"t_{i}", horizontal=True, label_visibility="collapsed")
-            
+
             rotulo_padrao = str(i+1)
-            
+
             if tipo == "Ladder":
                 lad = st.selectbox("Selecione o Ladder:", list(LADDERS.keys()), key=f"l_{i}")
                 ladder_data = [(tam, "Ladder", tam) for tam in LADDERS[lad]]
                 dados_para_plotar.append(ladder_data)
-                
+
                 rotulo_custom = st.text_input("Rótulo no Gel:", value="M", key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
                 nomes_ladders.append(lad)
-                
+
                 # Dados para CSV
                 relatorio_dados.append({
                     "Poço": i+1,
@@ -296,25 +312,25 @@ for i in range(num_pocos):
                 nomes_ladders.append(None)
                 tab_f, tab_t = st.tabs(["📂 Arquivo", "📝 Texto Manual"])
                 seq, nome_arquivo = "", ""
-                
+
                 with tab_f:
                     up = st.file_uploader("Upload DNA/Fasta", type=['dna', 'fasta', 'txt', 'fa'], key=f"u_{i}")
-                    if up: 
+                    if up:
                         nome_arquivo, seq = processar_upload(up)
-                        if nome_arquivo == "Erro": 
+                        if nome_arquivo == "Erro":
                             st.error(seq); seq = ""
                 with tab_t:
                     txt = st.text_area("Colar Sequência", height=70, key=f"tx_{i}")
-                    if txt and not seq: 
+                    if txt and not seq:
                         nome_t, seq_t = processar_texto_manual(txt)
                         if nome_t != "Seq Manual": nome_arquivo = nome_t
                         seq = seq_t
-                
+
                 st.markdown("---")
                 c1, c2 = st.columns([1, 2])
                 circ = c1.checkbox("Circular?", True, key=f"c_{i}")
                 enz = c2.multiselect("Enzimas de Restrição", TODAS_ENZIMAS, key=f"e_{i}")
-                
+
                 val_rotulo = nome_arquivo if nome_arquivo else str(i+1)
                 rotulo_custom = st.text_input("Rótulo no Gel:", value=val_rotulo[:12], key=f"lbl_{i}")
                 labels_eixo_x.append(rotulo_custom)
@@ -323,7 +339,7 @@ for i in range(num_pocos):
                     try:
                         res = calcular_digestao(seq, enz, circ)
                         dados_para_plotar.append(res)
-                        
+
                         fragmentos_str = "; ".join([str(int(b[0])) for b in res])
                         desc_enzimas = ", ".join(enz) if enz else ("Circular Uncut" if circ else "Linear Uncut")
                         relatorio_dados.append({
@@ -333,7 +349,7 @@ for i in range(num_pocos):
                             "Detalhes": desc_enzimas,
                             "Bandas (pb)": fragmentos_str
                         })
-                        
+
                     except Exception as e:
                         dados_para_plotar.append([])
                         st.error(f"Erro no cálculo: {e}")
@@ -351,16 +367,16 @@ st.markdown(" ") # Espaço antes do gel
 st.markdown("### Resultado da Eletroforese")
 
 if any(dados_para_plotar):
-    
+
     # Configuração de Cores do Gráfico
     if "Neon" in estilo_gel:
         bg_color = '#111827'; text_color = 'white'; color_sample = '#00ff41'; color_ladder = '#ff9900' # Neon otimizado
     elif "Profissional" in estilo_gel:
         bg_color = '#000000'; text_color = 'white'; color_sample = 'white'; color_ladder = 'white'
-    else: 
+    else:
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
-    min_view = 50 + (100 * (agarose - 0.5)) 
+    min_view = 50 + (100 * (agarose - 0.5))
     max_view = 25000 / (agarose * 0.8)
 
     fig = go.Figure()
@@ -372,7 +388,7 @@ if any(dados_para_plotar):
 
         if lista_bandas:
              massa_total = sum([b[2] for b in lista_bandas]) if not eh_ladder else 1
-        
+
         for (tam_aparente, tipo_banda, tam_real) in lista_bandas:
             if tam_aparente < min_view or tam_aparente > max_view: continue
 
@@ -388,8 +404,8 @@ if any(dados_para_plotar):
                 width = 3 + (8 * fracao)
                 opacity = 0.6 + (0.4 * fracao)
 
-            largura_banda = 0.28 
-            
+            largura_banda = 0.28
+
             fig.add_trace(go.Scatter(
                 x=[x_center - largura_banda, x_center + largura_banda],
                 y=[tam_aparente, tam_aparente],
@@ -419,7 +435,7 @@ if any(dados_para_plotar):
             tickmode='array', tickvals=list(range(1, num_pocos + 1)),
             ticktext=labels_eixo_x,
             tickfont=dict(color=text_color, size=14, family='Arial Black'),
-            showgrid=False, zeroline=False, range=[0.2, max_range] 
+            showgrid=False, zeroline=False, range=[0.2, max_range]
         ),
         yaxis=dict(
             type='log',
@@ -427,10 +443,10 @@ if any(dados_para_plotar):
             showgrid=False, zeroline=False, showticklabels=False
         )
     )
-    
+
     # Container visual para o gráfico ficar bonito no tema branco
     st.plotly_chart(fig, use_container_width=True)
-    
+
     # --- BOTÃO DISCRETO DE EXPORTAÇÃO ---
     with st.expander("📥 Exportar Dados do Relatório"):
         df_resultados = pd.DataFrame(relatorio_dados)
@@ -449,7 +465,6 @@ else:
 # --- RODAPÉ ---
 st.markdown("""
 <div class="footer">
-    <p><b>BioLab</b> | Instituto Butantan</p>
-    <p>Ferramenta desenvolvida por Elton Ostetti</p>
+    <p><b>BioSpark</b> | Instituto Butantan</p>
 </div>
 """, unsafe_allow_html=True)
