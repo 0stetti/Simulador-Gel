@@ -54,15 +54,19 @@ TEXTS = {
         "PT": """
         **Modos de Uso:**
         * **Digestão:** Upload do DNA + Enzimas.
-        * **PCR Pro:** - Detecta primers com **overhangs** (busca pela extremidade 3').
-          - Alerta em vermelho se houver **ligação inespecífica** (múltiplas bandas).
+        * **PCR:** Upload do Molde + Primers.
+          - Forward: Insira 5'->3'.
+          - Reverse: Insira 3'->5' (Exatamente como lido na fita antisense).
+          - Suporta Overhangs (detecta pela extremidade 3').
         * **Ladder:** Marcadores de peso molecular.
         """,
         "EN": """
         **Modes:**
         * **Digestion:** DNA Upload + Enzymes.
-        * **PCR Pro:** - Detects primers with **overhangs** (3' seed search).
-          - Red alert for **non-specific binding** (multiple bands).
+        * **PCR:** Template Upload + Primers.
+          - Forward: Input 5'->3'.
+          - Reverse: Input 3'->5' (As read on antisense strand).
+          - Supports Overhangs (3' seed detection).
         * **Ladder:** Molecular weight markers.
         """
     },
@@ -115,12 +119,12 @@ TEXTS = {
         "EN": "Enzymes"
     },
     "pcr_fwd": {
-        "PT": "Primer Forward",
-        "EN": "Forward Primer"
+        "PT": "Primer Forward (5'->3')",
+        "EN": "Forward Primer (5'->3')"
     },
     "pcr_rev": {
-        "PT": "Primer Reverse",
-        "EN": "Reverse Primer"
+        "PT": "Primer Reverse (3'->5')",
+        "EN": "Reverse Primer (3'->5')"
     },
     "result_title": {
         "PT": "Resultado da Eletroforese",
@@ -159,12 +163,12 @@ TEXTS = {
         "EN": "🐛 Report Bug"
     },
     "warn_multiple": {
-        "PT": "⚠️ MÚLTIPLOS SÍTIOS DE LIGAÇÃO DETECTADOS!",
-        "EN": "⚠️ MULTIPLE BINDING SITES DETECTED!"
+        "PT": "⚠️ INESPECIFICIDADE: Múltiplos sítios de ligação!",
+        "EN": "⚠️ NON-SPECIFIC: Multiple binding sites!"
     },
     "warn_no_product": {
-        "PT": "Nenhum produto (Verifique orientação 3')",
-        "EN": "No product (Check 3' orientation)"
+        "PT": "Nenhum produto (Verifique se o 3' anela corretamente)",
+        "EN": "No product (Check if 3' anneals correctly)"
     }
 }
 
@@ -267,11 +271,12 @@ st.markdown("""
         color: #DC2626;
         font-weight: bold;
         font-size: 12px;
+        margin-top: 5px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BACKEND (LÓGICA BIOLÓGICA) ---
+# --- 4. BACKEND (LÓGICA BIOLÓGICA & PCR PRO) ---
 
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
@@ -380,6 +385,11 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
 def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
+    """
+    Simula PCR com lógica de SEED 3' e Overhangs.
+    Fwd: 5'->3'. Seed = final da string.
+    Rev: 3'->5'. Seed = INÍCIO da string (pois 3' está na esquerda).
+    """
     if not sequencia or sequencia.startswith("Erro"): return [], False
     template = sequencia.upper()
     fwd = "".join(fwd_seq.split()).upper()
@@ -387,33 +397,71 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     
     if len(fwd) < 10 or len(rev) < 10: return [], False 
 
-    SEED_SIZE = 15
-    fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
-    rev_seed = rev[-SEED_SIZE:] if len(rev) > SEED_SIZE else rev
+    SEED_SIZE = 15 # Tamanho da semente para anelamento
     
+    # --- 1. Definir a Semente (Parte que anela no 3') ---
+    # FWD (5'->3'): A parte que polimeriza é o final da string (3').
+    fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
+    
+    # REV (3'->5'): O usuário digitou ao contrário. O 3' é o começo da string (índice 0).
+    # Então a semente são os primeiros caracteres.
+    rev_seed_3to5 = rev[:SEED_SIZE] if len(rev) > SEED_SIZE else rev
+    
+    # Para buscar no template (que é 5'->3'), precisamos inverter a semente do reverso
+    # Ex: User 3'-ATGC-5' -> Busca 5'-CGTA-3' no template? Não.
+    # Se o Primer é 3'-ATGC-5', ele pareia com 5'-TACG-3' no template.
+    # Então buscamos a sequência exata COMPLEMENTAR no template?
+    # O usuário pediu "Não inverter". Assumimos que ele digitou a sequência que PAREIA.
+    # Se ele digitou 3'->5', a sequência correspondente no template (5'->3') é simplesmente a string invertida.
+    # Ex: Primer 3'-A T G C-5' pareia com Template 5'-T A C G-3'.
+    # Se o usuário digitou A T G C... ele quer que pareie com T A C G?
+    # Vamos assumir a interpretação mais direta de "3'->5' visual":
+    # O usuário vê T-A-C-G na fita de baixo (lendo esq-dir). Ele digita T-A-C-G.
+    # Isso corresponde a A-T-G-C na fita de cima.
+    # Então buscamos a string invertida no template 5'->3'.
+    rev_seed_search = rev_seed_3to5[::-1]
+    
+    # --- 2. Encontrar Sítios ---
     fwd_matches = [m.start() for m in re.finditer(fwd_seed, template)]
-    rev_seed_rc = str(Seq(rev_seed).reverse_complement())
-    rev_matches = [m.start() for m in re.finditer(rev_seed_rc, template)]
+    rev_matches = [m.start() for m in re.finditer(rev_seed_search, template)]
     
     produtos = []
     
+    # --- 3. Parear Sítios ---
     for f_pos in fwd_matches:
+        # Posição onde termina o anelamento do FWD (3' efetivo no template)
         f_3prime_end = f_pos + len(fwd_seed)
+        
         for r_pos in rev_matches:
+            # r_pos é o início do match no template.
+            # Como a semente foi invertida, r_pos corresponde ao 5' do sítio no template
+            # que pareia com o 3' do primer reverso.
+            
+            # Cálculo de distância interna (DNA a ser copiado entre os primers)
+            
+            # CASO LINEAR (Forward antes do Reverse)
             if r_pos > f_pos:
                 distancia_interna = r_pos - f_3prime_end
+                
                 if distancia_interna >= 0:
+                    # Tamanho Final = Tamanho Primer Fwd Completo + Tamanho Primer Rev Completo + Miolo
                     tamanho_total = len(fwd) + len(rev) + distancia_interna
                     produtos.append(tamanho_total)
+            
+            # CASO CIRCULAR (Reverse aparece "antes" no array linear, cruzando a origem)
             elif eh_circular and r_pos < f_pos:
                 dist_fim = len(template) - f_3prime_end
                 dist_inicio = r_pos
                 distancia_interna = dist_fim + dist_inicio
+                
                 tamanho_total = len(fwd) + len(rev) + distancia_interna
                 produtos.append(tamanho_total)
                 
     tem_inespecificidade = len(produtos) > 1
+    
     if not produtos: return [], False
+    
+    # Retorna lista de tuplas para plotagem
     return [(p, "PCR Product", p) for p in sorted(produtos, reverse=True)], tem_inespecificidade
 
 # --- 5. INTERFACE DO USUÁRIO ---
@@ -462,6 +510,7 @@ with st.sidebar:
         st.session_state.lang = novo_lang
         st.rerun()
 
+    # Rodapé com Email de Reporte
     st.markdown(f"""
     <div style="font-size: 11px; color: #334155; line-height: 1.4; margin-top: 15px;">
         <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
@@ -564,8 +613,8 @@ for i in range(num_pocos):
 
                 elif tipo == "PCR":
                     fwd = st.text_input(TEXTS['pcr_fwd'][lang], key=f"fwd_{i}", placeholder="ATGC... (5'->3')")
-                    # TEXTO DO PRIMER REVERSO ATUALIZADO (SEM TEMPLATE)
-                    rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (5'->3')")
+                    # REVERSE: 3'->5' (Sem template, apenas ordem)
+                    rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (3'->5')")
                     circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}")
                     
                     rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value=f"PCR-{i+1}", key=f"lbl_{i}")
@@ -587,7 +636,7 @@ for i in range(num_pocos):
                                 "Poço": i+1,
                                 "Identificação": rotulo_custom,
                                 "Tipo": "PCR",
-                                "Detalhes": f"Fwd(3'):..{fwd[-5:]} / Rev(3'):..{rev[-5:]}",
+                                "Detalhes": f"Fwd(3'):..{fwd[-5:]} / Rev(3'):..{rev[:5]}",
                                 "Bandas (pb)": fragmentos_str if res else "Nenhum"
                             })
                         except Exception as e:
@@ -609,10 +658,9 @@ if any(dados_para_plotar):
     else: 
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
-    # MARGEM DE SEGURANÇA PARA BANDA 100bp NÃO CORTAR
+    # Margem de segurança para bandas pequenas
     min_view_calc = 50 + (100 * (agarose - 0.5))
-    min_view = min_view_calc * 0.8 # Dá 20% de margem extra abaixo
-    
+    min_view = min_view_calc * 0.8
     max_view = 25000 / (agarose * 0.8)
 
     fig = go.Figure()
@@ -626,7 +674,7 @@ if any(dados_para_plotar):
              massa_total = sum([b[2] for b in lista_bandas]) if not eh_ladder else 1
         
         for (tam_aparente, tipo_banda, tam_real) in lista_bandas:
-            # Filtro visual um pouco mais permissivo para não sumir banda
+            # Filtro visual mais permissivo
             if tam_aparente < (min_view * 0.9) or tam_aparente > (max_view * 1.1): continue
 
             width = 2; opacity = 0.8
@@ -668,7 +716,7 @@ if any(dados_para_plotar):
     fig.update_layout(
         plot_bgcolor=bg_color, paper_bgcolor=bg_color,
         height=700,
-        # MARGENS AUMENTADAS (Bottom e Left)
+        # Margens ajustadas para não cortar o eixo Y
         margin=dict(t=40, b=80, l=80, r=40),
         xaxis=dict(
             tickmode='array', tickvals=list(range(1, num_pocos + 1)),
