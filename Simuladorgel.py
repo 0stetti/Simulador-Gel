@@ -19,12 +19,12 @@ st.set_page_config(
 # --- 2. SISTEMA DE TRADUÇÃO (DICIONÁRIO) ---
 TEXTS = {
     "header_title": {
-        "PT": "Simulador de Digestão Enzimática",
-        "EN": "Enzymatic Digestion Simulator"
+        "PT": "Simulador de Gel de Agarose",
+        "EN": "Agarose Gel Simulator"
     },
     "header_sub": {
-        "PT": "Digestão Enzimática e PCR In Silico (com suporte a Overhangs e Múltiplos Sítios).",
-        "EN": "In Silico Enzymatic Digestion and PCR (supports Overhangs and Multiple Sites)."
+        "PT": "Ferramenta in silico para Digestão Enzimática e PCR.",
+        "EN": "In silico tool for Enzymatic Digestion and PCR."
     },
     "sidebar_config": {
         "PT": "CONFIGURAÇÕES",
@@ -183,6 +183,7 @@ st.markdown("""
         border-right: 1px solid #B2EBF2;
     }
 
+    /* SLIDER PERSONALIZADO */
     div[data-baseweb="slider"] div[class*="StyledThumb"] {
         background-color: #0F766E !important;
         border-color: #0F766E !important;
@@ -233,7 +234,7 @@ st.markdown("""
         background-color: #0F766E !important;
     }
     
-    /* Melhoria nas abas para ficarem mais visíveis */
+    /* ABAS VISÍVEIS */
     button[data-baseweb="tab"] {
         font-size: 13px !important;
         padding: 10px !important;
@@ -515,7 +516,6 @@ for i in range(num_pocos):
             
             else:
                 nomes_ladders.append(None)
-                # NOVAS ABAS COM TEXTO CLARO
                 tab_f, tab_t = st.tabs([f"📂 {TEXTS['tab_file'][lang]}", f"📝 {TEXTS['tab_text'][lang]}"])
                 seq, nome_arquivo = "", ""
                 
@@ -564,8 +564,8 @@ for i in range(num_pocos):
 
                 elif tipo == "PCR":
                     fwd = st.text_input(TEXTS['pcr_fwd'][lang], key=f"fwd_{i}", placeholder="ATGC... (5'->3')")
-                    # TEXTO DO PRIMER REVERSO ATUALIZADO
-                    rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (3'->5' Template)")
+                    # TEXTO DO PRIMER REVERSO ATUALIZADO (SEM TEMPLATE)
+                    rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (5'->3')")
                     circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}")
                     
                     rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value=f"PCR-{i+1}", key=f"lbl_{i}")
@@ -610,7 +610,6 @@ if any(dados_para_plotar):
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
     # MARGEM DE SEGURANÇA PARA BANDA 100bp NÃO CORTAR
-    # Reduzimos o piso do cálculo para que a banda menor sempre tenha espaço
     min_view_calc = 50 + (100 * (agarose - 0.5))
     min_view = min_view_calc * 0.8 # Dá 20% de margem extra abaixo
     
