@@ -19,12 +19,12 @@ st.set_page_config(
 # --- 2. SISTEMA DE TRADUÇÃO (DICIONÁRIO) ---
 TEXTS = {
     "header_title": {
-        "PT": "Simulador de Digestão Enzimática",
-        "EN": "Enzymatic Digestion Simulator"
+        "PT": "Simulador de Biologia Molecular",
+        "EN": "Molecular Biology Simulator"
     },
     "header_sub": {
-        "PT": "Configure suas amostras abaixo para visualizar o resultado da digestão in silico.",
-        "EN": "Configure your samples below to visualize the in silico digestion result."
+        "PT": "Digestão Enzimática e PCR In Silico (com suporte a Overhangs e Múltiplos Sítios).",
+        "EN": "In Silico Enzymatic Digestion and PCR (supports Overhangs and Multiple Sites)."
     },
     "sidebar_config": {
         "PT": "CONFIGURAÇÕES",
@@ -53,19 +53,17 @@ TEXTS = {
     "guide_content": {
         "PT": """
         **Modos de Uso:**
-        * **Digestão:** Upload do DNA + Escolha de Enzimas.
-        * **PCR:** Upload do Molde (Template) + Sequência dos Primers.
-        * **Ladder:** Escolha o marcador de peso molecular.
-        
-        ⚠️ **Atenção no PCR:** Insira apenas a parte da sequência que anela no molde (sem overhangs).
+        * **Digestão:** Upload do DNA + Enzimas.
+        * **PCR Pro:** - Detecta primers com **overhangs** (busca pela extremidade 3').
+          - Alerta em vermelho se houver **ligação inespecífica** (múltiplas bandas).
+        * **Ladder:** Marcadores de peso molecular.
         """,
         "EN": """
         **Modes:**
-        * **Digestion:** DNA Upload + Enzyme Selection.
-        * **PCR:** Template Upload + Primer Sequences.
-        * **Ladder:** Select molecular weight marker.
-        
-        ⚠️ **PCR Note:** Insert only the annealing sequence (without overhangs).
+        * **Digestion:** DNA Upload + Enzymes.
+        * **PCR Pro:** - Detects primers with **overhangs** (3' seed search).
+          - Red alert for **non-specific binding** (multiple bands).
+        * **Ladder:** Molecular weight markers.
         """
     },
     "well_title": {
@@ -117,12 +115,12 @@ TEXTS = {
         "EN": "Enzymes"
     },
     "pcr_fwd": {
-        "PT": "Primer Forward (5'-3')",
-        "EN": "Forward Primer (5'-3')"
+        "PT": "Primer Forward",
+        "EN": "Forward Primer"
     },
     "pcr_rev": {
-        "PT": "Primer Reverse (5'-3')",
-        "EN": "Reverse Primer (5'-3')"
+        "PT": "Primer Reverse",
+        "EN": "Reverse Primer"
     },
     "result_title": {
         "PT": "Resultado da Eletroforese",
@@ -159,6 +157,14 @@ TEXTS = {
     "report_bug": {
         "PT": "🐛 Reportar Problema",
         "EN": "🐛 Report Bug"
+    },
+    "warn_multiple": {
+        "PT": "⚠️ MÚLTIPLOS SÍTIOS DE LIGAÇÃO DETECTADOS!",
+        "EN": "⚠️ MULTIPLE BINDING SITES DETECTED!"
+    },
+    "warn_no_product": {
+        "PT": "Nenhum produto (Verifique orientação 3')",
+        "EN": "No product (Check 3' orientation)"
     }
 }
 
@@ -177,7 +183,6 @@ st.markdown("""
         border-right: 1px solid #B2EBF2;
     }
 
-    /* SLIDER PERSONALIZADO */
     div[data-baseweb="slider"] div[class*="StyledThumb"] {
         background-color: #0F766E !important;
         border-color: #0F766E !important;
@@ -250,10 +255,16 @@ st.markdown("""
         color: #0F766E;
         text-decoration: underline;
     }
+    
+    .warning-text {
+        color: #DC2626;
+        font-weight: bold;
+        font-size: 12px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BACKEND (LÓGICA DIGESTÃO E PCR) ---
+# --- 4. BACKEND (LÓGICA BIOLÓGICA) ---
 
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
@@ -361,42 +372,82 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
             
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
-def calcular_pcr(sequencia, fwd, rev, eh_circular):
-    """Simula PCR procurando primers na sequência (Exact Match)"""
-    if not sequencia or sequencia.startswith("Erro"): return []
-    if not fwd or not rev: return []
+def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
+    """
+    Simula PCR baseado na ancoragem da extremidade 3' (Seed).
+    Permite overhangs (caudas) e mutações no 5'.
+    Retorna: (Lista de Bandas, Flag de Inespecificidade)
+    """
+    if not sequencia or sequencia.startswith("Erro"): return [], False
     
-    seq_upper = sequencia.upper()
-    fwd_upper = "".join(fwd.split()).upper()
-    rev_upper = "".join(rev.split()).upper()
+    # Limpeza
+    template = sequencia.upper()
+    fwd = "".join(fwd_seq.split()).upper()
+    rev = "".join(rev_seq.split()).upper()
     
-    if len(fwd_upper) < 5 or len(rev_upper) < 5: return [] 
+    # Validação mínima
+    if len(fwd) < 10 or len(rev) < 10: return [], False # Primers muito curtos para PCR
 
-    # Encontra Forward (Fita Sense)
-    fwd_sites = [m.start() for m in re.finditer(fwd_upper, seq_upper)]
+    # --- LÓGICA BIOLÓGICA (3' SEED) ---
+    # A polimerase precisa que o 3' esteja pareado. O 5' pode estar flutuando (overhang).
+    # Vamos buscar os últimos 15pb (ou o tamanho total se for menor)
+    SEED_SIZE = 15
+    fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
+    rev_seed = rev[-SEED_SIZE:] if len(rev) > SEED_SIZE else rev
     
-    # Encontra Reverse (Fita Antisense -> Procura Comp. Reverso na Sense)
-    rev_rc = str(Seq(rev_upper).reverse_complement())
-    rev_sites = [m.start() for m in re.finditer(rev_rc, seq_upper)]
+    # 1. Encontrar sítios de anelamento da SEED 3'
+    # Forward anela na fita antisense -> Sequência é idêntica à fita sense.
+    fwd_matches = [m.start() for m in re.finditer(fwd_seed, template)]
+    
+    # Reverse anela na fita sense -> Sequência é o Complemento Reverso.
+    # Precisamos achar o Complemento Reverso da SEED do Reverse na fita template.
+    rev_seed_rc = str(Seq(rev_seed).reverse_complement())
+    rev_matches = [m.start() for m in re.finditer(rev_seed_rc, template)]
     
     produtos = []
     
-    # Pareamento simples
-    for f in fwd_sites:
-        for r in rev_sites:
-            # Linear
-            if r > f:
-                tamanho = (r + len(rev_rc)) - f
-                produtos.append(tamanho)
-            # Circular (atravessa origem)
-            elif eh_circular and r < f:
-                tamanho = (len(seq_upper) - f) + (r + len(rev_rc))
-                produtos.append(tamanho)
+    # 2. Calcular produtos para cada combinação de sítios
+    for f_pos in fwd_matches:
+        # f_pos é onde começa a SEED do Forward.
+        # A extremidade 3' real do Forward no template está em: f_pos + len(fwd_seed)
+        f_3prime_end = f_pos + len(fwd_seed)
+        
+        for r_pos in rev_matches:
+            # r_pos é onde começa a SEED_RC do Reverse.
+            # A extremidade 3' (que é o 5' do RC) está em r_pos.
+            # A polimerase estende a partir daqui na direção oposta, mas estamos medindo distância.
+            
+            # Tamanho do inserto (região copiada do template entre os primers)
+            # DNA: 5' --- [Fwd]--> ....... <---[Rev] --- 3'
+            
+            # Caso Linear: Reverse deve estar à frente do Forward
+            if r_pos > f_pos:
+                # Distância entre o 3' do Fwd e o 3' do Rev (no template)
+                # Na prática, o tamanho do produto = Tamanho Primer Fwd + Tamanho Primer Rev + Distância Interna
+                # Distância Interna = r_pos - f_3prime_end
+                distancia_interna = r_pos - f_3prime_end
                 
-    if not produtos:
-        return []
+                if distancia_interna >= 0:
+                    tamanho_total = len(fwd) + len(rev) + distancia_interna
+                    produtos.append(tamanho_total)
+            
+            # Caso Circular: Reverse pode estar "antes" (atravessando a origem)
+            elif eh_circular and r_pos < f_pos:
+                # Distância do Fwd até o fim + Início até o Rev
+                dist_fim = len(template) - f_3prime_end
+                dist_inicio = r_pos
+                distancia_interna = dist_fim + dist_inicio
+                
+                tamanho_total = len(fwd) + len(rev) + distancia_interna
+                produtos.append(tamanho_total)
+                
+    # 3. Análise de Inespecificidade
+    tem_inespecificidade = len(produtos) > 1
     
-    return [(p, "PCR Product", p) for p in sorted(produtos, reverse=True)]
+    if not produtos:
+        return [], False
+        
+    return [(p, "PCR Product", p) for p in sorted(produtos, reverse=True)], tem_inespecificidade
 
 # --- 5. INTERFACE DO USUÁRIO ---
 
@@ -547,27 +598,31 @@ for i in range(num_pocos):
                         relatorio_dados.append({"Poço": i+1, "Tipo": "Vazio", "Bandas (pb)": "-"})
 
                 elif tipo == "PCR":
-                    fwd = st.text_input("Fwd", key=f"fwd_{i}", placeholder="Sequence 5'-3'")
-                    rev = st.text_input("Rev", key=f"rev_{i}", placeholder="Sequence 5'-3'")
-                    circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}") 
+                    fwd = st.text_input(TEXTS['pcr_fwd'][lang], key=f"fwd_{i}", placeholder="ATGC... (5'->3')")
+                    rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (5'->3')")
+                    circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}")
                     
                     rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value=f"PCR-{i+1}", key=f"lbl_{i}")
                     labels_eixo_x.append(rotulo_custom)
                     
                     if seq and fwd and rev:
                         try:
-                            res = calcular_pcr(seq, fwd, rev, circ)
+                            # Chama a nova função biológica
+                            res, tem_inespecificidade = calcular_pcr_biologico(seq, fwd, rev, circ)
                             dados_para_plotar.append(res)
                             
+                            if tem_inespecificidade:
+                                st.markdown(f"<p class='warning-text'>{TEXTS['warn_multiple'][lang]}</p>", unsafe_allow_html=True)
+                            
                             if not res:
-                                st.warning("No product")
+                                st.warning(TEXTS['warn_no_product'][lang])
                             
                             fragmentos_str = "; ".join([str(int(b[0])) for b in res])
                             relatorio_dados.append({
                                 "Poço": i+1,
                                 "Identificação": rotulo_custom,
                                 "Tipo": "PCR",
-                                "Detalhes": f"F:{fwd[:5]}.. R:{rev[:5]}..",
+                                "Detalhes": f"Fwd(3'):..{fwd[-5:]} / Rev(3'):..{rev[-5:]}",
                                 "Bandas (pb)": fragmentos_str if res else "Nenhum"
                             })
                         except Exception as e:
