@@ -23,33 +23,71 @@ TEXTS = {
         "EN": "Molecular Biology Simulator"
     },
     "header_sub": {
-        "PT": "Digestão Enzimática e PCR In Silico (com suporte a Overhangs e Múltiplos Sítios).",
-        "EN": "In Silico Enzymatic Digestion and PCR (supports Overhangs and Multiple Sites)."
+        "PT": "Digestão Enzimática e PCR In Silico.",
+        "EN": "In Silico Enzymatic Digestion and PCR."
     },
-    "sidebar_config": { "PT": "CONFIGURAÇÕES", "EN": "SETTINGS" },
-    "sidebar_wells": { "PT": "Número de Poços", "EN": "Number of Wells" },
-    "sidebar_agarose": { "PT": "Agarose (%)", "EN": "Agarose (%)" },
-    "sidebar_visual": { "PT": "VISUALIZAÇÃO", "EN": "VISUALIZATION" },
-    "sidebar_theme": { "PT": "Tema do Gel", "EN": "Gel Theme" },
-    "guide_title": { "PT": "Guia Rápido", "EN": "Quick Guide" },
+    "sidebar_config": {
+        "PT": "CONFIGURAÇÕES",
+        "EN": "SETTINGS"
+    },
+    "sidebar_wells": {
+        "PT": "Número de Poços",
+        "EN": "Number of Wells"
+    },
+    "sidebar_agarose": {
+        "PT": "Agarose (%)",
+        "EN": "Agarose (%)"
+    },
+    "sidebar_visual": {
+        "PT": "VISUALIZAÇÃO",
+        "EN": "VISUALIZATION"
+    },
+    "sidebar_theme": {
+        "PT": "Tema do Gel",
+        "EN": "Gel Theme"
+    },
+    "guide_title": {
+        "PT": "Guia Rápido",
+        "EN": "Quick Guide"
+    },
     "guide_content": {
         "PT": """
-        **Modos de Uso:**
-        * **Digestão:** Upload do DNA + Enzimas.
-        * **PCR Pro:** - Suporta primers com **overhangs**.
-          - Detecta **ligação inespecífica** (alerta vermelho).
-        * **Ladder:** Marcadores de peso molecular.
+        **🧬 Funcionalidades:**
+        * **Digestão:** Simula o corte com enzimas de restrição.
+        * **PCR:** Simula a amplificação de fragmentos (suporta overhangs).
         
-        **Arquivos:** .dna, .fasta, .txt
+        **📂 Arquivos Suportados:**
+        * **.dna** (SnapGene)
+        * **.fasta / .fa** (Padrão)
+        * **.txt** (Sequência pura)
+        
+        **🛠️ Como Usar:**
+        1. Defina o **Nº de Poços** e **Agarose**.
+        2. No cartão, escolha: **Amostra**, **PCR** ou **Ladder**.
+        3. Faça upload do arquivo ou cole a sequência.
+        4. Rotule suas amostras para organização.
+        
+        **📥 Exportação:**
+        * Baixe a tabela de fragmentos (.csv) no final da página.
         """,
         "EN": """
-        **Modes:**
-        * **Digestion:** DNA Upload + Enzymes.
-        * **PCR Pro:** - Supports primers with **overhangs**.
-          - Detects **non-specific binding** (red alert).
-        * **Ladder:** Molecular weight markers.
+        **🧬 Features:**
+        * **Digestion:** Simulates restriction enzyme cuts.
+        * **PCR:** Simulates fragment amplification (supports overhangs).
         
-        **Files:** .dna, .fasta, .txt
+        **📂 Supported Files:**
+        * **.dna** (SnapGene)
+        * **.fasta / .fa** (Standard)
+        * **.txt** (Raw sequence)
+        
+        **🛠️ How to Use:**
+        1. Set **Well Count** and **Agarose**.
+        2. In the card, select: **Sample**, **PCR** or **Ladder**.
+        3. Upload file or paste sequence.
+        4. Label your samples.
+        
+        **📥 Export:**
+        * Download the fragment table (.csv) at the bottom.
         """
     },
     "well_title": { "PT": "Poço", "EN": "Well" },
@@ -58,7 +96,7 @@ TEXTS = {
     "opt_pcr": { "PT": "PCR", "EN": "PCR" },
     "sel_ladder": { "PT": "Selecione o Ladder:", "EN": "Select Ladder:" },
     "label_gel": { "PT": "Rótulo:", "EN": "Label:" },
-    # ABAS COM TEXTO CLARO
+    # NOVAS TRADUÇÕES PARA AS ABAS
     "tab_file": { "PT": "📂 Upload Arquivo", "EN": "📂 Upload File" },
     "tab_text": { "PT": "📝 Digitar/Colar", "EN": "📝 Type/Paste" },
     
@@ -77,12 +115,12 @@ TEXTS = {
     "institute": { "PT": "Instituto Butantan", "EN": "Butantan Institute" },
     "pref_lang": { "PT": "Idioma / Language", "EN": "Language" },
     "report_bug": { "PT": "🐛 Reportar Problema", "EN": "🐛 Report Bug" },
-    "warn_multiple": { "PT": "⚠️ MÚLTIPLOS SÍTIOS DE LIGAÇÃO DETECTADOS!", "EN": "⚠️ MULTIPLE BINDING SITES DETECTED!" },
-    "warn_no_product": { "PT": "Nenhum produto (Verifique orientação 3')", "EN": "No product (Check 3' orientation)" },
-    "ack_title": { "PT": "Apoio e Afiliação", "EN": "Support & Affiliation" }
+    "warn_multiple": { "PT": "⚠️ Múltiplos sítios de ligação!", "EN": "⚠️ Multiple binding sites!" },
+    "warn_no_product": { "PT": "Nenhum produto (Verifique orientação)", "EN": "No product (Check orientation)" },
+    "acknowledge_title": { "PT": "Apoio e Afiliação", "EN": "Support & Affiliation" }
 }
 
-# --- 3. ESTILO CSS (TURQUESA + MINIMALISTA) ---
+# --- 3. ESTILO CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -147,10 +185,10 @@ st.markdown("""
         background-color: #0F766E !important;
     }
     
-    /* ABAS MAIORES E VISÍVEIS */
+    /* Estilo das Abas */
     button[data-baseweb="tab"] {
-        font-size: 13px !important;
-        padding: 10px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
     }
 
     .footer {
@@ -161,7 +199,7 @@ st.markdown("""
         color: #64748B;
         border-top: 1px solid #CBD5E1;
         margin-top: 40px;
-        opacity: 0.8;
+        opacity: 0.9;
     }
     
     .bug-report {
@@ -182,22 +220,25 @@ st.markdown("""
         font-size: 12px;
     }
     
-    /* ESTILO NOVO PARA O RODAPÉ LATERAL */
-    .sidebar-footer {
-        margin-top: 20px;
-        padding-top: 15px;
+    /* Estilo dos Agradecimentos */
+    .ack-box {
+        margin-top: 15px;
+        padding-top: 10px;
         border-top: 1px solid #B2EBF2;
         font-size: 11px;
-        color: #333333; /* Texto Preto/Cinza Escuro */
+        color: #334155;
         line-height: 1.5;
     }
-    .sidebar-footer strong {
-        color: #0F766E; /* Destaque sutil */
+    .ack-title {
+        font-weight: 700;
+        color: #0F766E;
+        margin-bottom: 4px;
+        display: block;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BACKEND (LÓGICA BIOLÓGICA) ---
+# --- 4. BACKEND ---
 
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
@@ -313,10 +354,9 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     fwd = "".join(fwd_seq.split()).upper()
     rev = "".join(rev_seq.split()).upper()
     
-    # Validação mínima
-    if len(fwd) < 10 or len(rev) < 10: return [], False # Primers muito curtos para PCR
+    if len(fwd) < 10 or len(rev) < 10: return [], False
 
-    # --- LÓGICA BIOLÓGICA (3' SEED) ---
+    # Lógica de Seed 15pb (A que estava funcionando)
     SEED_SIZE = 15
     fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
     rev_seed = rev[-SEED_SIZE:] if len(rev) > SEED_SIZE else rev
@@ -336,7 +376,6 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
                 if distancia_interna >= 0:
                     tamanho_total = len(fwd) + len(rev) + distancia_interna
                     produtos.append(tamanho_total)
-            
             elif eh_circular and r_pos < f_pos:
                 dist_fim = len(template) - f_3prime_end
                 dist_inicio = r_pos
@@ -397,18 +436,19 @@ with st.sidebar:
         st.session_state.lang = novo_lang
         st.rerun()
 
-    # RODAPÉ LATERAL (ATUALIZADO)
+    # RODAPÉ COM CRÉDITOS E AGRADECIMENTOS
     st.markdown(f"""
-    <div class="sidebar-footer">
+    <div style="font-size: 11px; color: #334155; line-height: 1.4; margin-top: 15px;">
         <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
         <a class="bug-report" href="mailto:e.ostetti.proppg@proppg.butantan.gov.br?subject=Bug%20Report%20BioSpark">
             {TEXTS['report_bug'][lang]}
         </a>
-        <br>
-        <strong>{TEXTS['ack_title'][lang]}</strong><br>
-        FAPESP<br>
-        Universidade de São Paulo (USP)<br>
-        Instituto Butantan
+        <div class="ack-box">
+            <span class="ack-title">{TEXTS['acknowledge_title'][lang]}</span>
+            • <strong>FAPESP</strong> (Bolsa)<br>
+            • <strong>USP</strong> (Universidade de São Paulo)<br>
+            • <strong>Instituto Butantan</strong>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -429,6 +469,7 @@ for i in range(num_pocos):
     col_atual = cols[i % 4]
     with col_atual:
         with st.expander(f"🔹 {TEXTS['well_title'][lang]} {i+1}", expanded=(i==0)):
+            # Opções
             opcoes_tipo = [TEXTS['opt_sample'][lang], TEXTS['opt_pcr'][lang], TEXTS['opt_ladder'][lang]]
             tipo_display = st.radio("Tipo", options=opcoes_tipo, key=f"t_{i}", horizontal=True, label_visibility="collapsed")
             
@@ -453,9 +494,9 @@ for i in range(num_pocos):
                     "Bandas (pb)": "; ".join([str(t) for t in LADDERS[lad]])
                 })
             
-            else:
+            else: # Amostra ou PCR
                 nomes_ladders.append(None)
-                # ABAS ATUALIZADAS (TEXTO)
+                # ABAS ATUALIZADAS COM TEXTO
                 tab_f, tab_t = st.tabs([TEXTS['tab_file'][lang], TEXTS['tab_text'][lang]])
                 seq, nome_arquivo = "", ""
                 
