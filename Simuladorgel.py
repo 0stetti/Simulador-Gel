@@ -19,12 +19,12 @@ st.set_page_config(
 # --- 2. SISTEMA DE TRADUÇÃO (DICIONÁRIO) ---
 TEXTS = {
     "header_title": {
-        "PT": "Simulador de Biologia Molecular",
-        "EN": "Molecular Biology Simulator"
+        "PT": "Simulador de Digestão Enzimática",
+        "EN": "Enzymatic Digestion Simulator"
     },
     "header_sub": {
-        "PT": "Simule Digestão Enzimática e PCR in silico.",
-        "EN": "Simulate Enzymatic Digestion and PCR in silico."
+        "PT": "Configure suas amostras abaixo para visualizar o resultado da digestão in silico.",
+        "EN": "Configure your samples below to visualize the in silico digestion result."
     },
     "sidebar_config": {
         "PT": "CONFIGURAÇÕES",
@@ -56,12 +56,16 @@ TEXTS = {
         * **Digestão:** Upload do DNA + Escolha de Enzimas.
         * **PCR:** Upload do Molde (Template) + Sequência dos Primers.
         * **Ladder:** Escolha o marcador de peso molecular.
+        
+        ⚠️ **Atenção no PCR:** Insira apenas a parte da sequência que anela no molde (sem overhangs).
         """,
         "EN": """
         **Modes:**
         * **Digestion:** DNA Upload + Enzyme Selection.
         * **PCR:** Template Upload + Primer Sequences.
         * **Ladder:** Select molecular weight marker.
+        
+        ⚠️ **PCR Note:** Insert only the annealing sequence (without overhangs).
         """
     },
     "well_title": {
@@ -151,6 +155,10 @@ TEXTS = {
     "pref_lang": {
         "PT": "Idioma / Language",
         "EN": "Language"
+    },
+    "report_bug": {
+        "PT": "🐛 Reportar Problema",
+        "EN": "🐛 Report Bug"
     }
 }
 
@@ -229,6 +237,18 @@ st.markdown("""
         border-top: 1px solid #CBD5E1;
         margin-top: 40px;
         opacity: 0.8;
+    }
+    
+    .bug-report {
+        font-size: 11px;
+        color: #64748B;
+        text-decoration: none;
+        margin-top: 5px;
+        display: inline-block;
+    }
+    .bug-report:hover {
+        color: #0F766E;
+        text-decoration: underline;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -342,19 +362,17 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
 def calcular_pcr(sequencia, fwd, rev, eh_circular):
-    """Simula PCR procurando primers na sequência"""
+    """Simula PCR procurando primers na sequência (Exact Match)"""
     if not sequencia or sequencia.startswith("Erro"): return []
     if not fwd or not rev: return []
     
-    # Prepara sequências (limpa espaços e converte para maiúsculo)
     seq_upper = sequencia.upper()
     fwd_upper = "".join(fwd.split()).upper()
     rev_upper = "".join(rev.split()).upper()
     
-    if len(fwd_upper) < 5 or len(rev_upper) < 5: return [] # Primers muito curtos
+    if len(fwd_upper) < 5 or len(rev_upper) < 5: return [] 
 
     # Encontra Forward (Fita Sense)
-    # Nota: Usamos expressões regulares para achar todas as ocorrências
     fwd_sites = [m.start() for m in re.finditer(fwd_upper, seq_upper)]
     
     # Encontra Reverse (Fita Antisense -> Procura Comp. Reverso na Sense)
@@ -363,16 +381,14 @@ def calcular_pcr(sequencia, fwd, rev, eh_circular):
     
     produtos = []
     
-    # Lógica simples: parear cada Fwd com o Rev mais próximo
+    # Pareamento simples
     for f in fwd_sites:
         for r in rev_sites:
-            # Caso Linear
+            # Linear
             if r > f:
-                # Tamanho = (Fim do Primer Rev) - (Inicio do Primer Fwd)
-                # O sítio 'r' é onde começa o rev_complement na fita sense
                 tamanho = (r + len(rev_rc)) - f
                 produtos.append(tamanho)
-            # Caso Circular (Rev está antes do Fwd, atravessa a origem)
+            # Circular (atravessa origem)
             elif eh_circular and r < f:
                 tamanho = (len(seq_upper) - f) + (r + len(rev_rc))
                 produtos.append(tamanho)
@@ -380,7 +396,6 @@ def calcular_pcr(sequencia, fwd, rev, eh_circular):
     if not produtos:
         return []
     
-    # Retorna formatado para o plot: (Tamanho, Tipo, TamanhoReal)
     return [(p, "PCR Product", p) for p in sorted(produtos, reverse=True)]
 
 # --- 5. INTERFACE DO USUÁRIO ---
@@ -429,11 +444,15 @@ with st.sidebar:
         st.session_state.lang = novo_lang
         st.rerun()
 
+    # Rodapé com Email de Reporte
     st.markdown(f"""
     <div style="font-size: 11px; color: #334155; line-height: 1.4; margin-top: 15px;">
         <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
         {TEXTS['lab_name'][lang]}<br>
-        {TEXTS['institute'][lang]}
+        {TEXTS['institute'][lang]}<br><br>
+        <a class="bug-report" href="mailto:e.ostetti.proppg@proppg.butantan.gov.br?subject=Bug%20Report%20BioSpark">
+            {TEXTS['report_bug'][lang]}
+        </a>
     </div>
     """, unsafe_allow_html=True)
 
@@ -454,11 +473,10 @@ for i in range(num_pocos):
     col_atual = cols[i % 4]
     with col_atual:
         with st.expander(f"🔹 {TEXTS['well_title'][lang]} {i+1}", expanded=(i==0)):
-            # Opções de tipo incluindo PCR
+            # Opções
             opcoes_tipo = [TEXTS['opt_sample'][lang], TEXTS['opt_pcr'][lang], TEXTS['opt_ladder'][lang]]
             tipo_display = st.radio("Tipo", options=opcoes_tipo, key=f"t_{i}", horizontal=True, label_visibility="collapsed")
             
-            # Mapeia display para chave interna
             if tipo_display == TEXTS['opt_ladder'][lang]: tipo = "Ladder"
             elif tipo_display == TEXTS['opt_pcr'][lang]: tipo = "PCR"
             else: tipo = "Amostra"
@@ -499,7 +517,6 @@ for i in range(num_pocos):
                         seq = seq_t
                 
                 st.markdown("---")
-                
                 val_rotulo = nome_arquivo if nome_arquivo else str(i+1)
                 
                 if tipo == "Amostra":
@@ -530,9 +547,9 @@ for i in range(num_pocos):
                         relatorio_dados.append({"Poço": i+1, "Tipo": "Vazio", "Bandas (pb)": "-"})
 
                 elif tipo == "PCR":
-                    fwd = st.text_input("Fwd Primer", key=f"fwd_{i}", placeholder="5'-3'")
-                    rev = st.text_input("Rev Primer", key=f"rev_{i}", placeholder="5'-3'")
-                    circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}") # Default false for PCR template normally
+                    fwd = st.text_input("Fwd", key=f"fwd_{i}", placeholder="Sequence 5'-3'")
+                    rev = st.text_input("Rev", key=f"rev_{i}", placeholder="Sequence 5'-3'")
+                    circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}") 
                     
                     rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value=f"PCR-{i+1}", key=f"lbl_{i}")
                     labels_eixo_x.append(rotulo_custom)
@@ -551,7 +568,7 @@ for i in range(num_pocos):
                                 "Identificação": rotulo_custom,
                                 "Tipo": "PCR",
                                 "Detalhes": f"F:{fwd[:5]}.. R:{rev[:5]}..",
-                                "Bandas (pb)": fragmentos_str if res else "Nenhum produto"
+                                "Bandas (pb)": fragmentos_str if res else "Nenhum"
                             })
                         except Exception as e:
                             dados_para_plotar.append([])
