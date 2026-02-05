@@ -54,19 +54,15 @@ TEXTS = {
         "PT": """
         **Modos de Uso:**
         * **Digestão:** Upload do DNA + Enzimas.
-        * **PCR:** Upload do Molde + Primers.
-          - Forward: Insira 5'->3'.
-          - Reverse: Insira 3'->5' (Exatamente como lido na fita antisense).
-          - Suporta Overhangs (detecta pela extremidade 3').
+        * **PCR Pro:** - Detecta primers com **overhangs** (busca pela extremidade 3').
+          - Alerta em vermelho se houver **ligação inespecífica** (múltiplas bandas).
         * **Ladder:** Marcadores de peso molecular.
         """,
         "EN": """
         **Modes:**
         * **Digestion:** DNA Upload + Enzymes.
-        * **PCR:** Template Upload + Primers.
-          - Forward: Input 5'->3'.
-          - Reverse: Input 3'->5' (As read on antisense strand).
-          - Supports Overhangs (3' seed detection).
+        * **PCR Pro:** - Detects primers with **overhangs** (3' seed search).
+          - Red alert for **non-specific binding** (multiple bands).
         * **Ladder:** Molecular weight markers.
         """
     },
@@ -163,16 +159,32 @@ TEXTS = {
         "EN": "🐛 Report Bug"
     },
     "warn_multiple": {
-        "PT": "⚠️ INESPECIFICIDADE: Múltiplos sítios de ligação!",
-        "EN": "⚠️ NON-SPECIFIC: Multiple binding sites!"
+        "PT": "⚠️ INESPECIFICIDADE: Múltiplos sítios de ligação detectados!",
+        "EN": "⚠️ NON-SPECIFIC: Multiple binding sites detected!"
     },
     "warn_no_product": {
-        "PT": "Nenhum produto (Verifique se o 3' anela corretamente)",
-        "EN": "No product (Check if 3' anneals correctly)"
+        "PT": "Nenhum produto formado (Verifique orientação dos primers)",
+        "EN": "No product formed (Check primer orientation)"
+    },
+    "diag_fwd_fail": {
+        "PT": "❌ Forward não anela no molde (0 matches)",
+        "EN": "❌ Forward does not anneal (0 matches)"
+    },
+    "diag_rev_fail": {
+        "PT": "❌ Reverse não anela no molde (0 matches)",
+        "EN": "❌ Reverse does not anneal (0 matches)"
+    },
+    "diag_fwd_multi": {
+        "PT": "⚠️ Forward: {n} sítios de ligação",
+        "EN": "⚠️ Forward: {n} binding sites"
+    },
+    "diag_rev_multi": {
+        "PT": "⚠️ Reverse: {n} sítios de ligação",
+        "EN": "⚠️ Reverse: {n} binding sites"
     }
 }
 
-# --- 3. ESTILO CSS (TURQUESA + MINIMALISTA) ---
+# --- 3. ESTILO CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -187,7 +199,6 @@ st.markdown("""
         border-right: 1px solid #B2EBF2;
     }
 
-    /* SLIDER PERSONALIZADO */
     div[data-baseweb="slider"] div[class*="StyledThumb"] {
         background-color: #0F766E !important;
         border-color: #0F766E !important;
@@ -238,7 +249,6 @@ st.markdown("""
         background-color: #0F766E !important;
     }
     
-    /* ABAS VISÍVEIS */
     button[data-baseweb="tab"] {
         font-size: 13px !important;
         padding: 10px !important;
@@ -271,12 +281,18 @@ st.markdown("""
         color: #DC2626;
         font-weight: bold;
         font-size: 12px;
-        margin-top: 5px;
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+    .error-text {
+        color: #B91C1C;
+        font-size: 12px;
+        margin-top: 2px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BACKEND (LÓGICA BIOLÓGICA & PCR PRO) ---
+# --- 4. BACKEND (LÓGICA) ---
 
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
@@ -286,6 +302,12 @@ LADDERS = {
     "100bp DNA Ladder": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1200, 1517, 2017],
     "High Mass": [1000, 2000, 3000, 4000, 5000, 6000, 8000, 10000, 20000, 48500]
 }
+
+def clean_sequence(seq):
+    """Remove espaços, quebras de linha e caracteres inválidos."""
+    if not seq: return ""
+    # Mantém apenas caracteres de nucleotídeos válidos (incluindo IUPAC se necessário, mas foco em ATGC)
+    return re.sub(r'[^a-zA-Z]', '', seq).upper()
 
 def processar_upload(input_data):
     try:
@@ -321,8 +343,8 @@ def processar_upload(input_data):
             if not linha or linha.startswith(">") or linha.startswith(";"): continue
             seq_limpa += linha
         
-        seq_final = "".join(seq_limpa.split()).upper()
-        if any(c not in "ATGCNRYKMSWBDHV" for c in seq_final[:100]): 
+        seq_final = clean_sequence(seq_limpa)
+        if len(seq_final) > 0 and any(c not in "ATGCNRYKMSWBDHV" for c in seq_final[:100]): 
              return "Erro", "Arquivo inválido."
 
         return nome_sugerido, seq_final
@@ -337,7 +359,7 @@ def processar_texto_manual(texto):
             record = next(iterator)
             return record.id, str(record.seq).upper()
         else:
-            return "Seq Manual", "".join(texto.split()).upper()
+            return "Seq Manual", clean_sequence(texto)
     except:
         return "Erro", ""
 
@@ -387,65 +409,60 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
 def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     """
     Simula PCR com lógica de SEED 3' e Overhangs.
-    Fwd Input: 5'->3'. Seed = FINAL da string.
-    Rev Input: 3'->5'. Seed = INÍCIO da string (pois 3' está à esquerda).
+    Retorna: (Lista de Bandas, InfoDiagnostico)
+    InfoDiagnostico: dict com contagem de sites e flags.
     """
-    if not sequencia or sequencia.startswith("Erro"): return [], False
-    template = sequencia.upper()
-    fwd = "".join(fwd_seq.split()).upper()
-    rev = "".join(rev_seq.split()).upper()
+    if not sequencia or sequencia.startswith("Erro"): return [], {}
     
-    if len(fwd) < 10 or len(rev) < 10: return [], False 
+    template = clean_sequence(sequencia)
+    fwd = clean_sequence(fwd_seq)
+    rev = clean_sequence(rev_seq)
+    
+    diag = {'fwd_sites': 0, 'rev_sites': 0, 'products': 0}
+    
+    if len(fwd) < 10 or len(rev) < 10: return [], diag
 
-    SEED_SIZE = 15 # Tamanho da semente (região de anelamento estrito)
+    # SEED SIZE: Reduzido para 12 para acomodar primers com anelamento curto + overhangs
+    SEED_SIZE = 12 
     
     # --- 1. Definir a Semente (Parte que anela no 3') ---
-    
-    # FWD (5'->3'): A parte que polimeriza é o final da string (3').
-    # Ex: 5'-CAUDA-ANELAMENTO-3' -> Semente é o final.
+    # FWD (5'->3'): Semente é o final da string.
     fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
     
-    # REV (3'->5'): O usuário digitou ao contrário (SnapGene style).
-    # Ex: 3'-ANELAMENTO-CAUDA-5' -> A parte que polimeriza é o 3' (começo da string).
+    # REV (3'->5'): O usuário digitou ao contrário (3' na esquerda).
+    # Semente é o começo da string.
     rev_seed_3to5 = rev[:SEED_SIZE] if len(rev) > SEED_SIZE else rev
     
-    # Busca no Molde (que é 5'->3'):
-    # O Forward (5'->3') é idêntico à fita sense. Buscamos a string exata.
+    # Busca no Molde (5'->3'):
+    # Fwd é idêntico ao Sense.
     fwd_matches = [m.start() for m in re.finditer(fwd_seed, template)]
     
-    # O Reverse (3'->5') é complementar à fita sense.
-    # Ex: Primer 3'-TACG-5' pareia com Molde 5'-ATGC-3'.
-    # A string 'TACG' tem como complemento 'ATGC'.
-    # Então buscamos o COMPLEMENTO da semente no molde.
-    # Nota: Usamos complement(), não reverse_complement(), pois a entrada já está "reversa" (3'->5').
+    # Rev (3'->5') é complementar ao Sense.
+    # Ex: Primer 3'-TACG-5'. Complemento: 'ATGC'.
     rev_seed_complement = str(Seq(rev_seed_3to5).complement())
     rev_matches = [m.start() for m in re.finditer(rev_seed_complement, template)]
+    
+    diag['fwd_sites'] = len(fwd_matches)
+    diag['rev_sites'] = len(rev_matches)
     
     produtos = []
     
     # --- 2. Parear Sítios ---
     for f_pos in fwd_matches:
-        # Posição no molde onde termina o anelamento do FWD (ponto de extensão 3')
-        # f_pos é onde começa o match. O 3' está em f_pos + len(seed).
+        # 3' efetivo no template
         f_3prime_end = f_pos + len(fwd_seed)
         
         for r_pos in rev_matches:
-            # r_pos é onde começa o match do Reverse no molde.
-            # Como a entrada foi 3'->5', o início do match no molde (5') corresponde 
-            # ao pareamento com o 3' do primer reverso.
-            # A polimerase estende a partir daqui "para trás" (na fita antisense).
-            
             # CASO LINEAR (Forward antes do Reverse)
             if r_pos > f_pos:
                 # Distância interna = (Início do Rev) - (Fim do Fwd)
                 distancia_interna = r_pos - f_3prime_end
                 
                 if distancia_interna >= 0:
-                    # Tamanho Final = Tamanho Primer Fwd (com cauda) + Tamanho Primer Rev (com cauda) + Miolo
                     tamanho_total = len(fwd) + len(rev) + distancia_interna
                     produtos.append(tamanho_total)
             
-            # CASO CIRCULAR (Reverse aparece "antes" linearmente, cruzando a origem)
+            # CASO CIRCULAR (Cruzando a origem)
             elif eh_circular and r_pos < f_pos:
                 dist_fim = len(template) - f_3prime_end
                 dist_inicio = r_pos
@@ -454,11 +471,11 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
                 tamanho_total = len(fwd) + len(rev) + distancia_interna
                 produtos.append(tamanho_total)
                 
-    tem_inespecificidade = len(produtos) > 1
+    diag['products'] = len(produtos)
     
-    if not produtos: return [], False
+    if not produtos: return [], diag
     
-    return [(p, "PCR Product", p) for p in sorted(produtos, reverse=True)], tem_inespecificidade
+    return [(p, "PCR Product", p) for p in sorted(produtos, reverse=True)], diag
 
 # --- 5. INTERFACE DO USUÁRIO ---
 
@@ -608,7 +625,6 @@ for i in range(num_pocos):
 
                 elif tipo == "PCR":
                     fwd = st.text_input(TEXTS['pcr_fwd'][lang], key=f"fwd_{i}", placeholder="ATGC... (5'->3')")
-                    # CORRIGIDO PARA REFLETIR SUA PREFERÊNCIA (3'->5')
                     rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (3'->5')")
                     circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}")
                     
@@ -617,13 +633,22 @@ for i in range(num_pocos):
                     
                     if seq and fwd and rev:
                         try:
-                            res, tem_inespecificidade = calcular_pcr_biologico(seq, fwd, rev, circ)
+                            res, diag = calcular_pcr_biologico(seq, fwd, rev, circ)
                             dados_para_plotar.append(res)
                             
-                            if tem_inespecificidade:
-                                st.markdown(f"<p class='warning-text'>{TEXTS['warn_multiple'][lang]}</p>", unsafe_allow_html=True)
+                            # DIAGNÓSTICO DE PRIMERS (Alerta Vermelho solicitado)
+                            if diag['fwd_sites'] == 0:
+                                st.markdown(f"<p class='error-text'>{TEXTS['diag_fwd_fail'][lang]}</p>", unsafe_allow_html=True)
+                            if diag['rev_sites'] == 0:
+                                st.markdown(f"<p class='error-text'>{TEXTS['diag_rev_fail'][lang]}</p>", unsafe_allow_html=True)
                             
-                            if not res:
+                            # Alerta de Inespecificidade
+                            if diag['fwd_sites'] > 1:
+                                st.markdown(f"<p class='warning-text'>{TEXTS['diag_fwd_multi'][lang].format(n=diag['fwd_sites'])}</p>", unsafe_allow_html=True)
+                            if diag['rev_sites'] > 1:
+                                st.markdown(f"<p class='warning-text'>{TEXTS['diag_rev_multi'][lang].format(n=diag['rev_sites'])}</p>", unsafe_allow_html=True)
+                            
+                            if not res and diag['fwd_sites'] > 0 and diag['rev_sites'] > 0:
                                 st.warning(TEXTS['warn_no_product'][lang])
                             
                             fragmentos_str = "; ".join([str(int(b[0])) for b in res])
@@ -631,7 +656,7 @@ for i in range(num_pocos):
                                 "Poço": i+1,
                                 "Identificação": rotulo_custom,
                                 "Tipo": "PCR",
-                                "Detalhes": f"Fwd(3'):..{fwd[-5:]} / Rev(3'):..{rev[:5]}",
+                                "Detalhes": f"Fwd:{fwd[:5]}.. Rev:{rev[:5]}..",
                                 "Bandas (pb)": fragmentos_str if res else "Nenhum"
                             })
                         except Exception as e:
