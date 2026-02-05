@@ -16,15 +16,15 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. SISTEMA DE TRADUÇÃO (DICIONÁRIO) ---
+# --- 2. SISTEMA DE TRADUÇÃO (ATUALIZADO) ---
 TEXTS = {
     "header_title": {
         "PT": "Simulador de Biologia Molecular",
         "EN": "Molecular Biology Simulator"
     },
     "header_sub": {
-        "PT": "Digestão Enzimática e PCR In Silico (com suporte a Overhangs e Múltiplos Sítios).",
-        "EN": "In Silico Enzymatic Digestion and PCR (supports Overhangs and Multiple Sites)."
+        "PT": "Digestão Enzimática e PCR In Silico.",
+        "EN": "In Silico Enzymatic Digestion and PCR."
     },
     "sidebar_config": {
         "PT": "CONFIGURAÇÕES",
@@ -52,123 +52,75 @@ TEXTS = {
     },
     "guide_content": {
         "PT": """
-        **Modos de Uso:**
-        * **Digestão:** Upload do DNA + Enzimas.
-        * **PCR Pro:** - Detecta primers com **overhangs** (busca pela extremidade 3').
-          - Alerta em vermelho se houver **ligação inespecífica** (múltiplas bandas).
-        * **Ladder:** Marcadores de peso molecular.
+        **🧬 Funcionalidades:**
+        * **Digestão:** Simula o corte com enzimas de restrição.
+        * **PCR:** Simula a amplificação de fragmentos (suporta overhangs).
+        
+        **📂 Arquivos Suportados:**
+        * **.dna** (SnapGene)
+        * **.fasta / .fa** (Padrão)
+        * **.txt** (Sequência pura)
+        
+        **🛠️ Como Usar:**
+        1. Defina o **Nº de Poços** e **Agarose**.
+        2. No cartão, escolha: **Amostra**, **PCR** ou **Ladder**.
+        3. Faça upload do arquivo ou cole a sequência.
+        4. Rotule suas amostras para organização.
+        
+        **📥 Exportação:**
+        * Baixe a tabela de fragmentos (.csv) no final da página.
         """,
         "EN": """
-        **Modes:**
-        * **Digestion:** DNA Upload + Enzymes.
-        * **PCR Pro:** - Detects primers with **overhangs** (3' seed search).
-          - Red alert for **non-specific binding** (multiple bands).
-        * **Ladder:** Molecular weight markers.
+        **🧬 Features:**
+        * **Digestion:** Simulates restriction enzyme cuts.
+        * **PCR:** Simulates fragment amplification (supports overhangs).
+        
+        **📂 Supported Files:**
+        * **.dna** (SnapGene)
+        * **.fasta / .fa** (Standard)
+        * **.txt** (Raw sequence)
+        
+        **🛠️ How to Use:**
+        1. Set **Well Count** and **Agarose**.
+        2. In the card, select: **Sample**, **PCR** or **Ladder**.
+        3. Upload file or paste sequence.
+        4. Label your samples.
+        
+        **📥 Export:**
+        * Download the fragment table (.csv) at the bottom.
         """
     },
-    "well_title": {
-        "PT": "Poço",
-        "EN": "Well"
-    },
-    "opt_sample": {
-        "PT": "Digestão",
-        "EN": "Digestion"
-    },
-    "opt_ladder": {
-        "PT": "Ladder",
-        "EN": "Ladder"
-    },
-    "opt_pcr": {
-        "PT": "PCR",
-        "EN": "PCR"
-    },
-    "sel_ladder": {
-        "PT": "Selecione o Ladder:",
-        "EN": "Select Ladder:"
-    },
-    "label_gel": {
-        "PT": "Rótulo:",
-        "EN": "Label:"
-    },
-    "tab_file": {
-        "PT": "Arquivo",
-        "EN": "File"
-    },
-    "tab_text": {
-        "PT": "Texto",
-        "EN": "Text"
-    },
-    "upload_label": {
-        "PT": "Upload DNA",
-        "EN": "Upload DNA"
-    },
-    "paste_label": {
-        "PT": "Sequência",
-        "EN": "Sequence"
-    },
-    "check_circular": {
-        "PT": "Circular?",
-        "EN": "Circular?"
-    },
-    "sel_enzymes": {
-        "PT": "Enzimas",
-        "EN": "Enzymes"
-    },
-    "pcr_fwd": {
-        "PT": "Primer Forward",
-        "EN": "Forward Primer"
-    },
-    "pcr_rev": {
-        "PT": "Primer Reverse",
-        "EN": "Reverse Primer"
-    },
-    "result_title": {
-        "PT": "Resultado da Eletroforese",
-        "EN": "Electrophoresis Result"
-    },
-    "export_expander": {
-        "PT": "Exportar Dados",
-        "EN": "Export Data"
-    },
-    "btn_download": {
-        "PT": "Baixar .csv",
-        "EN": "Download .csv"
-    },
-    "empty_msg": {
-        "PT": "Para começar, adicione amostras nos cartões acima.",
-        "EN": "To start, add samples in the cards above."
-    },
-    "created_by": {
-        "PT": "Criado por",
-        "EN": "Created by"
-    },
-    "lab_name": {
-        "PT": "Laboratório de Biofármacos",
-        "EN": "Biopharmaceuticals Laboratory"
-    },
-    "institute": {
-        "PT": "Instituto Butantan",
-        "EN": "Butantan Institute"
-    },
-    "pref_lang": {
-        "PT": "Idioma / Language",
-        "EN": "Language"
-    },
-    "report_bug": {
-        "PT": "🐛 Reportar Problema",
-        "EN": "🐛 Report Bug"
-    },
-    "warn_multiple": {
-        "PT": "⚠️ MÚLTIPLOS SÍTIOS DE LIGAÇÃO DETECTADOS!",
-        "EN": "⚠️ MULTIPLE BINDING SITES DETECTED!"
-    },
-    "warn_no_product": {
-        "PT": "Nenhum produto (Verifique orientação 3')",
-        "EN": "No product (Check 3' orientation)"
-    }
+    "well_title": { "PT": "Poço", "EN": "Well" },
+    "opt_sample": { "PT": "Digestão", "EN": "Digestion" },
+    "opt_ladder": { "PT": "Ladder", "EN": "Ladder" },
+    "opt_pcr": { "PT": "PCR", "EN": "PCR" },
+    "sel_ladder": { "PT": "Selecione o Ladder:", "EN": "Select Ladder:" },
+    "label_gel": { "PT": "Rótulo:", "EN": "Label:" },
+    # NOVAS TRADUÇÕES PARA AS ABAS
+    "tab_file": { "PT": "📂 Upload Arquivo", "EN": "📂 Upload File" },
+    "tab_text": { "PT": "📝 Digitar/Colar", "EN": "📝 Type/Paste" },
+    
+    "upload_label": { "PT": "Upload DNA", "EN": "Upload DNA" },
+    "paste_label": { "PT": "Sequência", "EN": "Sequence" },
+    "check_circular": { "PT": "Circular?", "EN": "Circular?" },
+    "sel_enzymes": { "PT": "Enzimas", "EN": "Enzymes" },
+    "pcr_fwd": { "PT": "Primer Forward", "EN": "Forward Primer" },
+    "pcr_rev": { "PT": "Primer Reverse", "EN": "Reverse Primer" },
+    "result_title": { "PT": "Resultado da Eletroforese", "EN": "Electrophoresis Result" },
+    "export_expander": { "PT": "Exportar Dados", "EN": "Export Data" },
+    "btn_download": { "PT": "Baixar .csv", "EN": "Download .csv" },
+    "empty_msg": { "PT": "Para começar, adicione amostras nos cartões acima.", "EN": "To start, add samples in the cards above." },
+    "created_by": { "PT": "Desenvolvido por", "EN": "Developed by" },
+    "lab_name": { "PT": "Laboratório de Biofármacos", "EN": "Biopharmaceuticals Laboratory" },
+    "institute": { "PT": "Instituto Butantan", "EN": "Butantan Institute" },
+    "pref_lang": { "PT": "Idioma / Language", "EN": "Language" },
+    "report_bug": { "PT": "🐛 Reportar Problema", "EN": "🐛 Report Bug" },
+    "warn_multiple": { "PT": "⚠️ Múltiplos sítios de ligação!", "EN": "⚠️ Multiple binding sites!" },
+    "warn_no_product": { "PT": "Nenhum produto (Verifique orientação)", "EN": "No product (Check orientation)" },
+    "acknowledge_title": { "PT": "Apoio e Afiliação", "EN": "Support & Affiliation" }
 }
 
-# --- 3. ESTILO CSS (TURQUESA + MINIMALISTA) ---
+# --- 3. ESTILO CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -232,6 +184,12 @@ st.markdown("""
     span[data-baseweb="checkbox"] div {
         background-color: #0F766E !important;
     }
+    
+    /* Estilo das Abas */
+    button[data-baseweb="tab"] {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+    }
 
     .footer {
         width: 100%;
@@ -241,7 +199,7 @@ st.markdown("""
         color: #64748B;
         border-top: 1px solid #CBD5E1;
         margin-top: 40px;
-        opacity: 0.8;
+        opacity: 0.9;
     }
     
     .bug-report {
@@ -261,10 +219,26 @@ st.markdown("""
         font-weight: bold;
         font-size: 12px;
     }
+    
+    /* Estilo dos Agradecimentos */
+    .ack-box {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #B2EBF2;
+        font-size: 11px;
+        color: #334155;
+        line-height: 1.5;
+    }
+    .ack-title {
+        font-weight: 700;
+        color: #0F766E;
+        margin-bottom: 4px;
+        display: block;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BACKEND (LÓGICA BIOLÓGICA) ---
+# --- 4. BACKEND ---
 
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
@@ -373,11 +347,6 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
 def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
-    """
-    Simula PCR baseado na ancoragem da extremidade 3' (Seed).
-    Permite overhangs (caudas) e mutações no 5'.
-    Retorna: (Lista de Bandas, Flag de Inespecificidade)
-    """
     if not sequencia or sequencia.startswith("Erro"): return [], False
     
     # Limpeza
@@ -385,63 +354,35 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     fwd = "".join(fwd_seq.split()).upper()
     rev = "".join(rev_seq.split()).upper()
     
-    # Validação mínima
-    if len(fwd) < 10 or len(rev) < 10: return [], False # Primers muito curtos para PCR
+    if len(fwd) < 10 or len(rev) < 10: return [], False
 
-    # --- LÓGICA BIOLÓGICA (3' SEED) ---
-    # A polimerase precisa que o 3' esteja pareado. O 5' pode estar flutuando (overhang).
-    # Vamos buscar os últimos 15pb (ou o tamanho total se for menor)
+    # Lógica de Seed 15pb (A que estava funcionando)
     SEED_SIZE = 15
     fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
     rev_seed = rev[-SEED_SIZE:] if len(rev) > SEED_SIZE else rev
     
-    # 1. Encontrar sítios de anelamento da SEED 3'
-    # Forward anela na fita antisense -> Sequência é idêntica à fita sense.
     fwd_matches = [m.start() for m in re.finditer(fwd_seed, template)]
-    
-    # Reverse anela na fita sense -> Sequência é o Complemento Reverso.
-    # Precisamos achar o Complemento Reverso da SEED do Reverse na fita template.
     rev_seed_rc = str(Seq(rev_seed).reverse_complement())
     rev_matches = [m.start() for m in re.finditer(rev_seed_rc, template)]
     
     produtos = []
     
-    # 2. Calcular produtos para cada combinação de sítios
     for f_pos in fwd_matches:
-        # f_pos é onde começa a SEED do Forward.
-        # A extremidade 3' real do Forward no template está em: f_pos + len(fwd_seed)
         f_3prime_end = f_pos + len(fwd_seed)
         
         for r_pos in rev_matches:
-            # r_pos é onde começa a SEED_RC do Reverse.
-            # A extremidade 3' (que é o 5' do RC) está em r_pos.
-            # A polimerase estende a partir daqui na direção oposta, mas estamos medindo distância.
-            
-            # Tamanho do inserto (região copiada do template entre os primers)
-            # DNA: 5' --- [Fwd]--> ....... <---[Rev] --- 3'
-            
-            # Caso Linear: Reverse deve estar à frente do Forward
             if r_pos > f_pos:
-                # Distância entre o 3' do Fwd e o 3' do Rev (no template)
-                # Na prática, o tamanho do produto = Tamanho Primer Fwd + Tamanho Primer Rev + Distância Interna
-                # Distância Interna = r_pos - f_3prime_end
                 distancia_interna = r_pos - f_3prime_end
-                
                 if distancia_interna >= 0:
                     tamanho_total = len(fwd) + len(rev) + distancia_interna
                     produtos.append(tamanho_total)
-            
-            # Caso Circular: Reverse pode estar "antes" (atravessando a origem)
             elif eh_circular and r_pos < f_pos:
-                # Distância do Fwd até o fim + Início até o Rev
                 dist_fim = len(template) - f_3prime_end
                 dist_inicio = r_pos
                 distancia_interna = dist_fim + dist_inicio
-                
                 tamanho_total = len(fwd) + len(rev) + distancia_interna
                 produtos.append(tamanho_total)
                 
-    # 3. Análise de Inespecificidade
     tem_inespecificidade = len(produtos) > 1
     
     if not produtos:
@@ -495,15 +436,19 @@ with st.sidebar:
         st.session_state.lang = novo_lang
         st.rerun()
 
-    # Rodapé com Email de Reporte
+    # RODAPÉ COM CRÉDITOS E AGRADECIMENTOS
     st.markdown(f"""
     <div style="font-size: 11px; color: #334155; line-height: 1.4; margin-top: 15px;">
         <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
-        {TEXTS['lab_name'][lang]}<br>
-        {TEXTS['institute'][lang]}<br><br>
         <a class="bug-report" href="mailto:e.ostetti.proppg@proppg.butantan.gov.br?subject=Bug%20Report%20BioSpark">
             {TEXTS['report_bug'][lang]}
         </a>
+        <div class="ack-box">
+            <span class="ack-title">{TEXTS['acknowledge_title'][lang]}</span>
+            • <strong>FAPESP</strong> (Bolsa)<br>
+            • <strong>USP</strong> (Universidade de São Paulo)<br>
+            • <strong>Instituto Butantan</strong>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -551,7 +496,8 @@ for i in range(num_pocos):
             
             else: # Amostra ou PCR
                 nomes_ladders.append(None)
-                tab_f, tab_t = st.tabs([f"📂", f"📝"])
+                # ABAS ATUALIZADAS COM TEXTO
+                tab_f, tab_t = st.tabs([TEXTS['tab_file'][lang], TEXTS['tab_text'][lang]])
                 seq, nome_arquivo = "", ""
                 
                 with tab_f:
@@ -607,7 +553,6 @@ for i in range(num_pocos):
                     
                     if seq and fwd and rev:
                         try:
-                            # Chama a nova função biológica
                             res, tem_inespecificidade = calcular_pcr_biologico(seq, fwd, rev, circ)
                             dados_para_plotar.append(res)
                             
