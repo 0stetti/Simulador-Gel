@@ -19,8 +19,8 @@ st.set_page_config(
 # --- 2. SISTEMA DE TRADUÇÃO (DICIONÁRIO) ---
 TEXTS = {
     "header_title": {
-        "PT": "Simulador de Biologia Molecular",
-        "EN": "Molecular Biology Simulator"
+        "PT": "Simulador de Digestão Enzimática",
+        "EN": "Enzymatic Digestion Simulator"
     },
     "header_sub": {
         "PT": "Digestão Enzimática e PCR In Silico (com suporte a Overhangs e Múltiplos Sítios).",
@@ -91,20 +91,20 @@ TEXTS = {
         "EN": "Label:"
     },
     "tab_file": {
-        "PT": "Arquivo",
-        "EN": "File"
+        "PT": "Upload Arquivo",
+        "EN": "Upload File"
     },
     "tab_text": {
-        "PT": "Texto",
-        "EN": "Text"
+        "PT": "Digitar/Colar",
+        "EN": "Type/Paste"
     },
     "upload_label": {
-        "PT": "Upload DNA",
-        "EN": "Upload DNA"
+        "PT": "Arraste seu arquivo aqui",
+        "EN": "Drag your file here"
     },
     "paste_label": {
-        "PT": "Sequência",
-        "EN": "Sequence"
+        "PT": "Cole a sequência (FASTA ou pura)",
+        "EN": "Paste sequence (FASTA or raw)"
     },
     "check_circular": {
         "PT": "Circular?",
@@ -231,6 +231,12 @@ st.markdown("""
     
     span[data-baseweb="checkbox"] div {
         background-color: #0F766E !important;
+    }
+    
+    /* Melhoria nas abas para ficarem mais visíveis */
+    button[data-baseweb="tab"] {
+        font-size: 13px !important;
+        padding: 10px !important;
     }
 
     .footer {
@@ -373,80 +379,40 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
     return [(frag, "Fragmento", frag) for frag in sorted(fragmentos, reverse=True)]
 
 def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
-    """
-    Simula PCR baseado na ancoragem da extremidade 3' (Seed).
-    Permite overhangs (caudas) e mutações no 5'.
-    Retorna: (Lista de Bandas, Flag de Inespecificidade)
-    """
     if not sequencia or sequencia.startswith("Erro"): return [], False
-    
-    # Limpeza
     template = sequencia.upper()
     fwd = "".join(fwd_seq.split()).upper()
     rev = "".join(rev_seq.split()).upper()
     
-    # Validação mínima
-    if len(fwd) < 10 or len(rev) < 10: return [], False # Primers muito curtos para PCR
+    if len(fwd) < 10 or len(rev) < 10: return [], False 
 
-    # --- LÓGICA BIOLÓGICA (3' SEED) ---
-    # A polimerase precisa que o 3' esteja pareado. O 5' pode estar flutuando (overhang).
-    # Vamos buscar os últimos 15pb (ou o tamanho total se for menor)
     SEED_SIZE = 15
     fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
     rev_seed = rev[-SEED_SIZE:] if len(rev) > SEED_SIZE else rev
     
-    # 1. Encontrar sítios de anelamento da SEED 3'
-    # Forward anela na fita antisense -> Sequência é idêntica à fita sense.
     fwd_matches = [m.start() for m in re.finditer(fwd_seed, template)]
-    
-    # Reverse anela na fita sense -> Sequência é o Complemento Reverso.
-    # Precisamos achar o Complemento Reverso da SEED do Reverse na fita template.
     rev_seed_rc = str(Seq(rev_seed).reverse_complement())
     rev_matches = [m.start() for m in re.finditer(rev_seed_rc, template)]
     
     produtos = []
     
-    # 2. Calcular produtos para cada combinação de sítios
     for f_pos in fwd_matches:
-        # f_pos é onde começa a SEED do Forward.
-        # A extremidade 3' real do Forward no template está em: f_pos + len(fwd_seed)
         f_3prime_end = f_pos + len(fwd_seed)
-        
         for r_pos in rev_matches:
-            # r_pos é onde começa a SEED_RC do Reverse.
-            # A extremidade 3' (que é o 5' do RC) está em r_pos.
-            # A polimerase estende a partir daqui na direção oposta, mas estamos medindo distância.
-            
-            # Tamanho do inserto (região copiada do template entre os primers)
-            # DNA: 5' --- [Fwd]--> ....... <---[Rev] --- 3'
-            
-            # Caso Linear: Reverse deve estar à frente do Forward
             if r_pos > f_pos:
-                # Distância entre o 3' do Fwd e o 3' do Rev (no template)
-                # Na prática, o tamanho do produto = Tamanho Primer Fwd + Tamanho Primer Rev + Distância Interna
-                # Distância Interna = r_pos - f_3prime_end
                 distancia_interna = r_pos - f_3prime_end
-                
                 if distancia_interna >= 0:
                     tamanho_total = len(fwd) + len(rev) + distancia_interna
                     produtos.append(tamanho_total)
-            
-            # Caso Circular: Reverse pode estar "antes" (atravessando a origem)
             elif eh_circular and r_pos < f_pos:
-                # Distância do Fwd até o fim + Início até o Rev
                 dist_fim = len(template) - f_3prime_end
                 dist_inicio = r_pos
                 distancia_interna = dist_fim + dist_inicio
-                
                 tamanho_total = len(fwd) + len(rev) + distancia_interna
                 produtos.append(tamanho_total)
                 
-    # 3. Análise de Inespecificidade
     tem_inespecificidade = len(produtos) > 1
-    
-    if not produtos:
-        return [], False
-        
+    if not produtos: return [], False
     return [(p, "PCR Product", p) for p in sorted(produtos, reverse=True)], tem_inespecificidade
 
 # --- 5. INTERFACE DO USUÁRIO ---
@@ -495,7 +461,6 @@ with st.sidebar:
         st.session_state.lang = novo_lang
         st.rerun()
 
-    # Rodapé com Email de Reporte
     st.markdown(f"""
     <div style="font-size: 11px; color: #334155; line-height: 1.4; margin-top: 15px;">
         <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
@@ -524,7 +489,6 @@ for i in range(num_pocos):
     col_atual = cols[i % 4]
     with col_atual:
         with st.expander(f"🔹 {TEXTS['well_title'][lang]} {i+1}", expanded=(i==0)):
-            # Opções
             opcoes_tipo = [TEXTS['opt_sample'][lang], TEXTS['opt_pcr'][lang], TEXTS['opt_ladder'][lang]]
             tipo_display = st.radio("Tipo", options=opcoes_tipo, key=f"t_{i}", horizontal=True, label_visibility="collapsed")
             
@@ -549,9 +513,10 @@ for i in range(num_pocos):
                     "Bandas (pb)": "; ".join([str(t) for t in LADDERS[lad]])
                 })
             
-            else: # Amostra ou PCR
+            else:
                 nomes_ladders.append(None)
-                tab_f, tab_t = st.tabs([f"📂", f"📝"])
+                # NOVAS ABAS COM TEXTO CLARO
+                tab_f, tab_t = st.tabs([f"📂 {TEXTS['tab_file'][lang]}", f"📝 {TEXTS['tab_text'][lang]}"])
                 seq, nome_arquivo = "", ""
                 
                 with tab_f:
@@ -599,7 +564,8 @@ for i in range(num_pocos):
 
                 elif tipo == "PCR":
                     fwd = st.text_input(TEXTS['pcr_fwd'][lang], key=f"fwd_{i}", placeholder="ATGC... (5'->3')")
-                    rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (5'->3')")
+                    # TEXTO DO PRIMER REVERSO ATUALIZADO
+                    rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (3'->5' Template)")
                     circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}")
                     
                     rotulo_custom = st.text_input(TEXTS['label_gel'][lang], value=f"PCR-{i+1}", key=f"lbl_{i}")
@@ -607,7 +573,6 @@ for i in range(num_pocos):
                     
                     if seq and fwd and rev:
                         try:
-                            # Chama a nova função biológica
                             res, tem_inespecificidade = calcular_pcr_biologico(seq, fwd, rev, circ)
                             dados_para_plotar.append(res)
                             
@@ -644,7 +609,11 @@ if any(dados_para_plotar):
     else: 
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
-    min_view = 50 + (100 * (agarose - 0.5)) 
+    # MARGEM DE SEGURANÇA PARA BANDA 100bp NÃO CORTAR
+    # Reduzimos o piso do cálculo para que a banda menor sempre tenha espaço
+    min_view_calc = 50 + (100 * (agarose - 0.5))
+    min_view = min_view_calc * 0.8 # Dá 20% de margem extra abaixo
+    
     max_view = 25000 / (agarose * 0.8)
 
     fig = go.Figure()
@@ -658,7 +627,8 @@ if any(dados_para_plotar):
              massa_total = sum([b[2] for b in lista_bandas]) if not eh_ladder else 1
         
         for (tam_aparente, tipo_banda, tam_real) in lista_bandas:
-            if tam_aparente < min_view or tam_aparente > max_view: continue
+            # Filtro visual um pouco mais permissivo para não sumir banda
+            if tam_aparente < (min_view * 0.9) or tam_aparente > (max_view * 1.1): continue
 
             width = 2; opacity = 0.8
             if eh_ladder:
@@ -698,7 +668,9 @@ if any(dados_para_plotar):
 
     fig.update_layout(
         plot_bgcolor=bg_color, paper_bgcolor=bg_color,
-        height=700, margin=dict(t=40, b=40, l=40, r=40),
+        height=700,
+        # MARGENS AUMENTADAS (Bottom e Left)
+        margin=dict(t=40, b=80, l=80, r=40),
         xaxis=dict(
             tickmode='array', tickvals=list(range(1, num_pocos + 1)),
             ticktext=labels_eixo_x,
