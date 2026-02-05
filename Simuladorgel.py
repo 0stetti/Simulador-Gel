@@ -387,8 +387,8 @@ def calcular_digestao(sequencia, enzimas, eh_circular):
 def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     """
     Simula PCR com lógica de SEED 3' e Overhangs.
-    Fwd: 5'->3'. Seed = final da string.
-    Rev: 3'->5'. Seed = INÍCIO da string (pois 3' está na esquerda).
+    Fwd Input: 5'->3'. Seed = FINAL da string.
+    Rev Input: 3'->5'. Seed = INÍCIO da string (pois 3' está à esquerda).
     """
     if not sequencia or sequencia.startswith("Erro"): return [], False
     template = sequencia.upper()
@@ -397,58 +397,55 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     
     if len(fwd) < 10 or len(rev) < 10: return [], False 
 
-    SEED_SIZE = 15 # Tamanho da semente para anelamento
+    SEED_SIZE = 15 # Tamanho da semente (região de anelamento estrito)
     
     # --- 1. Definir a Semente (Parte que anela no 3') ---
+    
     # FWD (5'->3'): A parte que polimeriza é o final da string (3').
+    # Ex: 5'-CAUDA-ANELAMENTO-3' -> Semente é o final.
     fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
     
-    # REV (3'->5'): O usuário digitou ao contrário. O 3' é o começo da string (índice 0).
-    # Então a semente são os primeiros caracteres.
+    # REV (3'->5'): O usuário digitou ao contrário (SnapGene style).
+    # Ex: 3'-ANELAMENTO-CAUDA-5' -> A parte que polimeriza é o 3' (começo da string).
     rev_seed_3to5 = rev[:SEED_SIZE] if len(rev) > SEED_SIZE else rev
     
-    # Para buscar no template (que é 5'->3'), precisamos inverter a semente do reverso
-    # Ex: User 3'-ATGC-5' -> Busca 5'-CGTA-3' no template? Não.
-    # Se o Primer é 3'-ATGC-5', ele pareia com 5'-TACG-3' no template.
-    # Então buscamos a sequência exata COMPLEMENTAR no template?
-    # O usuário pediu "Não inverter". Assumimos que ele digitou a sequência que PAREIA.
-    # Se ele digitou 3'->5', a sequência correspondente no template (5'->3') é simplesmente a string invertida.
-    # Ex: Primer 3'-A T G C-5' pareia com Template 5'-T A C G-3'.
-    # Se o usuário digitou A T G C... ele quer que pareie com T A C G?
-    # Vamos assumir a interpretação mais direta de "3'->5' visual":
-    # O usuário vê T-A-C-G na fita de baixo (lendo esq-dir). Ele digita T-A-C-G.
-    # Isso corresponde a A-T-G-C na fita de cima.
-    # Então buscamos a string invertida no template 5'->3'.
-    rev_seed_search = rev_seed_3to5[::-1]
-    
-    # --- 2. Encontrar Sítios ---
+    # Busca no Molde (que é 5'->3'):
+    # O Forward (5'->3') é idêntico à fita sense. Buscamos a string exata.
     fwd_matches = [m.start() for m in re.finditer(fwd_seed, template)]
-    rev_matches = [m.start() for m in re.finditer(rev_seed_search, template)]
+    
+    # O Reverse (3'->5') é complementar à fita sense.
+    # Ex: Primer 3'-TACG-5' pareia com Molde 5'-ATGC-3'.
+    # A string 'TACG' tem como complemento 'ATGC'.
+    # Então buscamos o COMPLEMENTO da semente no molde.
+    # Nota: Usamos complement(), não reverse_complement(), pois a entrada já está "reversa" (3'->5').
+    rev_seed_complement = str(Seq(rev_seed_3to5).complement())
+    rev_matches = [m.start() for m in re.finditer(rev_seed_complement, template)]
     
     produtos = []
     
-    # --- 3. Parear Sítios ---
+    # --- 2. Parear Sítios ---
     for f_pos in fwd_matches:
-        # Posição onde termina o anelamento do FWD (3' efetivo no template)
+        # Posição no molde onde termina o anelamento do FWD (ponto de extensão 3')
+        # f_pos é onde começa o match. O 3' está em f_pos + len(seed).
         f_3prime_end = f_pos + len(fwd_seed)
         
         for r_pos in rev_matches:
-            # r_pos é o início do match no template.
-            # Como a semente foi invertida, r_pos corresponde ao 5' do sítio no template
-            # que pareia com o 3' do primer reverso.
-            
-            # Cálculo de distância interna (DNA a ser copiado entre os primers)
+            # r_pos é onde começa o match do Reverse no molde.
+            # Como a entrada foi 3'->5', o início do match no molde (5') corresponde 
+            # ao pareamento com o 3' do primer reverso.
+            # A polimerase estende a partir daqui "para trás" (na fita antisense).
             
             # CASO LINEAR (Forward antes do Reverse)
             if r_pos > f_pos:
+                # Distância interna = (Início do Rev) - (Fim do Fwd)
                 distancia_interna = r_pos - f_3prime_end
                 
                 if distancia_interna >= 0:
-                    # Tamanho Final = Tamanho Primer Fwd Completo + Tamanho Primer Rev Completo + Miolo
+                    # Tamanho Final = Tamanho Primer Fwd (com cauda) + Tamanho Primer Rev (com cauda) + Miolo
                     tamanho_total = len(fwd) + len(rev) + distancia_interna
                     produtos.append(tamanho_total)
             
-            # CASO CIRCULAR (Reverse aparece "antes" no array linear, cruzando a origem)
+            # CASO CIRCULAR (Reverse aparece "antes" linearmente, cruzando a origem)
             elif eh_circular and r_pos < f_pos:
                 dist_fim = len(template) - f_3prime_end
                 dist_inicio = r_pos
@@ -461,7 +458,6 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     
     if not produtos: return [], False
     
-    # Retorna lista de tuplas para plotagem
     return [(p, "PCR Product", p) for p in sorted(produtos, reverse=True)], tem_inespecificidade
 
 # --- 5. INTERFACE DO USUÁRIO ---
@@ -510,7 +506,6 @@ with st.sidebar:
         st.session_state.lang = novo_lang
         st.rerun()
 
-    # Rodapé com Email de Reporte
     st.markdown(f"""
     <div style="font-size: 11px; color: #334155; line-height: 1.4; margin-top: 15px;">
         <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
@@ -613,7 +608,7 @@ for i in range(num_pocos):
 
                 elif tipo == "PCR":
                     fwd = st.text_input(TEXTS['pcr_fwd'][lang], key=f"fwd_{i}", placeholder="ATGC... (5'->3')")
-                    # REVERSE: 3'->5' (Sem template, apenas ordem)
+                    # CORRIGIDO PARA REFLETIR SUA PREFERÊNCIA (3'->5')
                     rev = st.text_input(TEXTS['pcr_rev'][lang], key=f"rev_{i}", placeholder="ATGC... (3'->5')")
                     circ = st.checkbox(TEXTS['check_circular'][lang], False, key=f"cp_{i}")
                     
@@ -658,9 +653,8 @@ if any(dados_para_plotar):
     else: 
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
-    # Margem de segurança para bandas pequenas
     min_view_calc = 50 + (100 * (agarose - 0.5))
-    min_view = min_view_calc * 0.8
+    min_view = min_view_calc * 0.8 
     max_view = 25000 / (agarose * 0.8)
 
     fig = go.Figure()
@@ -674,7 +668,6 @@ if any(dados_para_plotar):
              massa_total = sum([b[2] for b in lista_bandas]) if not eh_ladder else 1
         
         for (tam_aparente, tipo_banda, tam_real) in lista_bandas:
-            # Filtro visual mais permissivo
             if tam_aparente < (min_view * 0.9) or tam_aparente > (max_view * 1.1): continue
 
             width = 2; opacity = 0.8
@@ -716,7 +709,6 @@ if any(dados_para_plotar):
     fig.update_layout(
         plot_bgcolor=bg_color, paper_bgcolor=bg_color,
         height=700,
-        # Margens ajustadas para não cortar o eixo Y
         margin=dict(t=40, b=80, l=80, r=40),
         xaxis=dict(
             tickmode='array', tickvals=list(range(1, num_pocos + 1)),
