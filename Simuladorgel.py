@@ -8,85 +8,207 @@ from Bio.Restriction import RestrictionBatch, Analysis, CommOnly
 from io import StringIO, BytesIO
 from Bio import SeqIO
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA E ÍCONE ---
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="BioSpark Studio",
+    page_title="BioSpark",
     layout="wide",
-    # AQUI VOCÊ MUDA O ÍCONE: Pode ser um emoji "🧬" ou o nome de um arquivo "logo.png"
-    page_icon="🧬", 
+    page_icon="🧬",
     initial_sidebar_state="expanded"
 )
 
-# --- 2. SISTEMA DE TRADUÇÃO ---
+# --- 2. SISTEMA DE TRADUÇÃO (DICIONÁRIO) ---
 TEXTS = {
-    "header_title": { "PT": "Simulador de Biologia Molecular", "EN": "Molecular Biology Simulator" },
-    "header_sub": { "PT": "Digestão Enzimática e PCR In Silico.", "EN": "In Silico Enzymatic Digestion and PCR." },
-    "sidebar_config": { "PT": "CONFIGURAÇÕES", "EN": "SETTINGS" },
-    "sidebar_wells": { "PT": "Número de Poços", "EN": "Number of Wells" },
-    "sidebar_agarose": { "PT": "Agarose (%)", "EN": "Agarose (%)" },
-    "sidebar_visual": { "PT": "VISUALIZAÇÃO", "EN": "VISUALIZATION" },
-    "sidebar_theme": { "PT": "Tema do Gel", "EN": "Gel Theme" },
-    "guide_title": { "PT": "Guia Rápido", "EN": "Quick Guide" },
+    "header_title": {
+        "PT": "Simulador de Biologia Molecular",
+        "EN": "Molecular Biology Simulator"
+    },
+    "header_sub": {
+        "PT": "Digestão Enzimática e PCR In Silico (com suporte a Overhangs e Múltiplos Sítios).",
+        "EN": "In Silico Enzymatic Digestion and PCR (supports Overhangs and Multiple Sites)."
+    },
+    "sidebar_config": {
+        "PT": "CONFIGURAÇÕES",
+        "EN": "SETTINGS"
+    },
+    "sidebar_wells": {
+        "PT": "Número de Poços",
+        "EN": "Number of Wells"
+    },
+    "sidebar_agarose": {
+        "PT": "Agarose (%)",
+        "EN": "Agarose (%)"
+    },
+    "sidebar_visual": {
+        "PT": "VISUALIZAÇÃO",
+        "EN": "VISUALIZATION"
+    },
+    "sidebar_theme": {
+        "PT": "Tema do Gel",
+        "EN": "Gel Theme"
+    },
+    "guide_title": {
+        "PT": "Guia Rápido",
+        "EN": "Quick Guide"
+    },
     "guide_content": {
         "PT": """
-        **Modos de Uso:**
-        * **Digestão:** Upload do DNA + Enzimas.
-        * **PCR:** Cole os primers (Suporta overhangs).
-        * **Ladder:** Escolha o marcador.
+        **🧬 Funcionalidades:**
+        * **Digestão:** Simula o corte com enzimas de restrição.
+        * **PCR:** Simula a amplificação de fragmentos (suporta overhangs).
         
-        **Arquivos:** .dna, .fasta, .txt
+        **📂 Arquivos Suportados:**
+        * **.dna** (SnapGene)
+        * **.fasta / .fa** (Padrão)
+        * **.txt** (Sequência pura)
+        
+        **🛠️ Como Usar:**
+        1. Defina o **Nº de Poços** e **Agarose**.
+        2. Selecione **Amostra**, **PCR** ou **Ladder**.
+        3. Faça upload ou cole a sequência.
+        
+        **📥 Exportação:**
+        * Baixe a tabela de fragmentos (.csv) no final da página.
         """,
         "EN": """
-        **Modes:**
-        * **Digestion:** DNA Upload + Enzymes.
-        * **PCR:** Paste primers (Supports overhangs).
-        * **Ladder:** Select marker.
+        **🧬 Features:**
+        * **Digestion:** Simulates restriction enzyme cuts.
+        * **PCR:** Simulates fragment amplification (supports overhangs).
         
-        **Files:** .dna, .fasta, .txt
+        **📂 Supported Files:**
+        * **.dna** (SnapGene)
+        * **.fasta / .fa** (Standard)
+        * **.txt** (Raw sequence)
+        
+        **🛠️ How to Use:**
+        1. Set **Well Count** and **Agarose**.
+        2. Select **Sample**, **PCR** or **Ladder**.
+        3. Upload or paste sequence.
+        
+        **📥 Export:**
+        * Download the fragment table (.csv) at the bottom.
         """
     },
-    "well_title": { "PT": "Poço", "EN": "Well" },
-    "opt_sample": { "PT": "Digestão", "EN": "Digestion" },
-    "opt_ladder": { "PT": "Ladder", "EN": "Ladder" },
-    "opt_pcr": { "PT": "PCR", "EN": "PCR" },
-    "sel_ladder": { "PT": "Selecione o Ladder:", "EN": "Select Ladder:" },
-    "label_gel": { "PT": "Rótulo:", "EN": "Label:" },
-    "tab_file": { "PT": "📂 Upload Arquivo", "EN": "📂 Upload File" },
-    "tab_text": { "PT": "📝 Digitar/Colar", "EN": "📝 Type/Paste" },
-    "upload_label": { "PT": "Upload DNA", "EN": "Upload DNA" },
-    "paste_label": { "PT": "Sequência", "EN": "Sequence" },
-    "check_circular": { "PT": "Circular?", "EN": "Circular?" },
-    "sel_enzymes": { "PT": "Enzimas", "EN": "Enzymes" },
-    "pcr_fwd": { "PT": "Primer Forward", "EN": "Forward Primer" },
-    "pcr_rev": { "PT": "Primer Reverse", "EN": "Reverse Primer" },
-    "result_title": { "PT": "Resultado da Eletroforese", "EN": "Electrophoresis Result" },
-    "export_expander": { "PT": "Exportar Dados", "EN": "Export Data" },
-    "btn_download": { "PT": "Baixar .csv", "EN": "Download .csv" },
-    "empty_msg": { "PT": "Para começar, adicione amostras nos cartões acima.", "EN": "To start, add samples in the cards above." },
-    "created_by": { "PT": "Desenvolvido por", "EN": "Developed by" },
-    "lab_name": { "PT": "Laboratório de Biofármacos", "EN": "Biopharmaceuticals Laboratory" },
-    "institute": { "PT": "Instituto Butantan", "EN": "Butantan Institute" },
-    "pref_lang": { "PT": "Idioma / Language", "EN": "Language" },
-    "report_bug": { "PT": "Reportar Erro", "EN": "Report Bug" },
-    "warn_multiple": { "PT": "⚠️ Múltiplos sítios de ligação!", "EN": "⚠️ Multiple binding sites!" },
-    "warn_no_product": { "PT": "Nenhum produto (Verifique orientação 3')", "EN": "No product (Check 3' orientation)" },
-    "ack_title": { "PT": "Apoio e Afiliação", "EN": "Support & Affiliation" }
+    "well_title": {
+        "PT": "Poço",
+        "EN": "Well"
+    },
+    "opt_sample": {
+        "PT": "Digestão",
+        "EN": "Digestion"
+    },
+    "opt_ladder": {
+        "PT": "Ladder",
+        "EN": "Ladder"
+    },
+    "opt_pcr": {
+        "PT": "PCR",
+        "EN": "PCR"
+    },
+    "sel_ladder": {
+        "PT": "Selecione o Ladder:",
+        "EN": "Select Ladder:"
+    },
+    "label_gel": {
+        "PT": "Rótulo:",
+        "EN": "Label:"
+    },
+    # NOVAS CHAVES (ABAS)
+    "tab_file": {
+        "PT": "📂 Upload Arquivo",
+        "EN": "📂 Upload File"
+    },
+    "tab_text": {
+        "PT": "📝 Digitar/Colar",
+        "EN": "📝 Type/Paste"
+    },
+    
+    "upload_label": {
+        "PT": "Upload DNA",
+        "EN": "Upload DNA"
+    },
+    "paste_label": {
+        "PT": "Sequência",
+        "EN": "Sequence"
+    },
+    "check_circular": {
+        "PT": "Circular?",
+        "EN": "Circular?"
+    },
+    "sel_enzymes": {
+        "PT": "Enzimas",
+        "EN": "Enzymes"
+    },
+    "pcr_fwd": {
+        "PT": "Primer Forward",
+        "EN": "Forward Primer"
+    },
+    "pcr_rev": {
+        "PT": "Primer Reverse",
+        "EN": "Reverse Primer"
+    },
+    "result_title": {
+        "PT": "Resultado da Eletroforese",
+        "EN": "Electrophoresis Result"
+    },
+    "export_expander": {
+        "PT": "Exportar Dados",
+        "EN": "Export Data"
+    },
+    "btn_download": {
+        "PT": "Baixar .csv",
+        "EN": "Download .csv"
+    },
+    "empty_msg": {
+        "PT": "Para começar, adicione amostras nos cartões acima.",
+        "EN": "To start, add samples in the cards above."
+    },
+    "created_by": {
+        "PT": "Desenvolvido por",
+        "EN": "Developed by"
+    },
+    "lab_name": {
+        "PT": "Laboratório de Biofármacos",
+        "EN": "Biopharmaceuticals Laboratory"
+    },
+    "institute": {
+        "PT": "Instituto Butantan",
+        "EN": "Butantan Institute"
+    },
+    "pref_lang": {
+        "PT": "Idioma / Language",
+        "EN": "Language"
+    },
+    "report_bug": {
+        "PT": "🐛 Reportar Problema",
+        "EN": "🐛 Report Bug"
+    },
+    "warn_multiple": {
+        "PT": "⚠️ MÚLTIPLOS SÍTIOS DE LIGAÇÃO DETECTADOS!",
+        "EN": "⚠️ MULTIPLE BINDING SITES DETECTED!"
+    },
+    "warn_no_product": {
+        "PT": "Nenhum produto (Verifique orientação 3')",
+        "EN": "No product (Check 3' orientation)"
+    },
+    "acknowledge_title": {
+        "PT": "Apoio e Afiliação",
+        "EN": "Support & Affiliation"
+    }
 }
 
-# --- 3. ESTILO CSS (CORRIGIDO: TEXTO PRETO E SEM LAGARTA) ---
+# --- 3. ESTILO CSS (TURQUESA + MINIMALISTA) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     .stApp {
-        background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);
+        background: linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 100%);
         font-family: 'Inter', sans-serif;
-        color: #111827; /* Preto padrão */
     }
 
     section[data-testid="stSidebar"] {
-        background-color: #F1F5F9; /* Cinza gelo (neutro) */
-        border-right: 1px solid #E2E8F0;
+        background-color: #E0F7FA;
+        border-right: 1px solid #B2EBF2;
     }
 
     div[data-baseweb="slider"] div[class*="StyledThumb"] {
@@ -97,11 +219,11 @@ st.markdown("""
         background-color: #0F766E !important;
     }
     div[data-baseweb="slider"] div[class*="StyledTrack"] {
-        background-color: #CBD5E1 !important;
+        background-color: #B2EBF2 !important;
     }
 
     h1, h2, h3 {
-        color: #111827 !important; /* Preto */
+        color: #0F172A !important;
         font-weight: 700 !important;
         letter-spacing: -0.02em;
     }
@@ -115,7 +237,7 @@ st.markdown("""
     }
     
     .stExpander:hover {
-        border-color: #94A3B8 !important;
+        border-color: #0F766E !important;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
     }
 
@@ -139,40 +261,33 @@ st.markdown("""
         background-color: #0F766E !important;
     }
     
+    /* Estilo das Abas */
     button[data-baseweb="tab"] {
-        font-size: 13px !important;
-        padding: 8px 12px !important;
-        color: #334155 !important; /* Texto cinza escuro nas abas */
+        font-size: 14px !important;
+        font-weight: 500 !important;
     }
 
-    /* RODAPÉ LATERAL CORRIGIDO */
-    .sidebar-footer {
-        margin-top: 30px;
-        padding-top: 15px;
-        border-top: 1px solid #CBD5E1;
+    .footer {
+        width: 100%;
+        text-align: center;
+        padding: 20px 0;
         font-size: 11px;
-        color: #1F2937; /* Cinza bem escuro */
-        line-height: 1.5;
+        color: #64748B;
+        border-top: 1px solid #CBD5E1;
+        margin-top: 40px;
+        opacity: 0.9;
     }
     
-    .sidebar-footer strong {
-        color: #111827; /* Preto forte para títulos */
-        font-weight: 700;
-    }
-
-    /* Link discreto para reportar erro */
     .bug-report {
         font-size: 11px;
         color: #64748B;
         text-decoration: none;
-        margin-top: 15px; /* Mais espaço antes do link */
-        display: block; 
-        border-bottom: 1px dotted #64748B;
-        width: fit-content;
+        margin-top: 5px;
+        display: inline-block;
     }
     .bug-report:hover {
-        color: #DC2626; /* Fica vermelho ao passar o mouse */
-        border-bottom: 1px solid #DC2626;
+        color: #0F766E;
+        text-decoration: underline;
     }
     
     .warning-text {
@@ -180,10 +295,26 @@ st.markdown("""
         font-weight: bold;
         font-size: 12px;
     }
+    
+    /* Estilo dos Agradecimentos */
+    .ack-box {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #B2EBF2;
+        font-size: 11px;
+        color: #334155;
+        line-height: 1.5;
+    }
+    .ack-title {
+        font-weight: 700;
+        color: #0F766E;
+        margin-bottom: 4px;
+        display: block;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BACKEND (SUA VERSÃO ESTÁVEL) ---
+# --- 4. BACKEND (LÓGICA BIOLÓGICA) ---
 
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
@@ -301,7 +432,7 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     
     if len(fwd) < 10 or len(rev) < 10: return [], False
 
-    # Seed 15pb
+    # Lógica de Seed 15pb (A que estava funcionando)
     SEED_SIZE = 15
     fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
     rev_seed = rev[-SEED_SIZE:] if len(rev) > SEED_SIZE else rev
@@ -318,16 +449,13 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
         for r_pos in rev_matches:
             if r_pos > f_pos:
                 distancia_interna = r_pos - f_3prime_end
-                
                 if distancia_interna >= 0:
                     tamanho_total = len(fwd) + len(rev) + distancia_interna
                     produtos.append(tamanho_total)
-            
             elif eh_circular and r_pos < f_pos:
                 dist_fim = len(template) - f_3prime_end
                 dist_inicio = r_pos
                 distancia_interna = dist_fim + dist_inicio
-                
                 tamanho_total = len(fwd) + len(rev) + distancia_interna
                 produtos.append(tamanho_total)
                 
@@ -349,7 +477,6 @@ with st.sidebar:
         <h1 style="font-family: 'Inter', sans-serif; font-weight: 800; color: #0F766E; font-size: 26px; letter-spacing: -1px; margin:0;">
             BioSpark
         </h1>
-        <p style="font-size: 10px; color: #334155; opacity: 0.8; margin:0; text-transform: uppercase; letter-spacing: 1px;">Studio</p>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("---")
@@ -384,16 +511,16 @@ with st.sidebar:
         st.session_state.lang = novo_lang
         st.rerun()
 
-    # RODAPÉ LATERAL CORRIGIDO (TEXTO PRETO, ORDEM CERTA)
+    # RODAPÉ COM CRÉDITOS E AGRADECIMENTOS
     st.markdown(f"""
-    <div class="sidebar-footer">
-        <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong>
-        <br><br>
-        <strong>{TEXTS['ack_title'][lang]}</strong><br>
-        <span style="color: #374151;">FAPESP</span><br>
-        <span style="color: #374151;">Universidade de São Paulo (USP)</span><br>
-        <span style="color: #374151;">Instituto Butantan</span>
-        <br>
+    <div style="font-size: 11px; color: #334155; line-height: 1.4; margin-top: 15px;">
+        <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
+        <div class="ack-box">
+            <span class="ack-title">{TEXTS['acknowledge_title'][lang]}</span>
+            • <strong>FAPESP</strong> (Bolsa)<br>
+            • <strong>USP</strong> (Universidade de São Paulo)<br>
+            • <strong>Instituto Butantan</strong>
+        </div>
         <a class="bug-report" href="mailto:e.ostetti.proppg@proppg.butantan.gov.br?subject=Bug%20Report%20BioSpark">
             {TEXTS['report_bug'][lang]}
         </a>
@@ -442,9 +569,9 @@ for i in range(num_pocos):
                     "Bandas (pb)": "; ".join([str(t) for t in LADDERS[lad]])
                 })
             
-            else:
+            else: # Amostra ou PCR
                 nomes_ladders.append(None)
-                # ABAS COM TEXTO CLARO
+                # ABAS ATUALIZADAS COM TEXTO
                 tab_f, tab_t = st.tabs([TEXTS['tab_file'][lang], TEXTS['tab_text'][lang]])
                 seq, nome_arquivo = "", ""
                 
@@ -537,11 +664,8 @@ if any(dados_para_plotar):
     else: 
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
-    # CORREÇÃO: Começa em 25 para não cortar o 100pb
-    min_view = 25 
+    min_view = 50 + (100 * (agarose - 0.5)) 
     max_view = 25000 / (agarose * 0.8)
-    
-    max_range = max(num_pocos, 15) + 0.5
 
     fig = go.Figure()
 
@@ -554,7 +678,7 @@ if any(dados_para_plotar):
              massa_total = sum([b[2] for b in lista_bandas]) if not eh_ladder else 1
         
         for (tam_aparente, tipo_banda, tam_real) in lista_bandas:
-            if tam_aparente < (min_view * 0.9) or tam_aparente > (max_view * 1.1): continue
+            if tam_aparente < min_view or tam_aparente > max_view: continue
 
             width = 2; opacity = 0.8
             if eh_ladder:
@@ -589,6 +713,8 @@ if any(dados_para_plotar):
                     textfont=dict(color=text_color, size=10),
                     showlegend=False, hoverinfo='skip'
                 ))
+
+    max_range = max(num_pocos, 15) + 0.5
 
     fig.update_layout(
         plot_bgcolor=bg_color, paper_bgcolor=bg_color,
