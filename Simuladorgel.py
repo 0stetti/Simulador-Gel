@@ -8,11 +8,12 @@ from Bio.Restriction import RestrictionBatch, Analysis, CommOnly
 from io import StringIO, BytesIO
 from Bio import SeqIO
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+# --- 1. CONFIGURAÇÃO DA PÁGINA E ÍCONE ---
 st.set_page_config(
     page_title="BioSpark Studio",
     layout="wide",
-    page_icon="🧬",
+    # AQUI VOCÊ MUDA O ÍCONE: Pode ser um emoji "🧬" ou o nome de um arquivo "logo.png"
+    page_icon="🧬", 
     initial_sidebar_state="expanded"
 )
 
@@ -67,12 +68,12 @@ TEXTS = {
     "institute": { "PT": "Instituto Butantan", "EN": "Butantan Institute" },
     "pref_lang": { "PT": "Idioma / Language", "EN": "Language" },
     "report_bug": { "PT": "Reportar Erro", "EN": "Report Bug" },
-    "warn_multiple": { "PT": "⚠️ MÚLTIPLOS SÍTIOS DE LIGAÇÃO DETECTADOS!", "EN": "⚠️ MULTIPLE BINDING SITES DETECTED!" },
+    "warn_multiple": { "PT": "⚠️ Múltiplos sítios de ligação!", "EN": "⚠️ Multiple binding sites!" },
     "warn_no_product": { "PT": "Nenhum produto (Verifique orientação 3')", "EN": "No product (Check 3' orientation)" },
     "ack_title": { "PT": "Apoio e Afiliação", "EN": "Support & Affiliation" }
 }
 
-# --- 3. ESTILO CSS (SÓBRIO) ---
+# --- 3. ESTILO CSS (CORRIGIDO: TEXTO PRETO E SEM LAGARTA) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -80,13 +81,12 @@ st.markdown("""
     .stApp {
         background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);
         font-family: 'Inter', sans-serif;
-        color: #111827;
+        color: #111827; /* Preto padrão */
     }
 
     section[data-testid="stSidebar"] {
-        background-color: #F1F5F9;
+        background-color: #F1F5F9; /* Cinza gelo (neutro) */
         border-right: 1px solid #E2E8F0;
-        padding-top: 10px;
     }
 
     div[data-baseweb="slider"] div[class*="StyledThumb"] {
@@ -101,7 +101,7 @@ st.markdown("""
     }
 
     h1, h2, h3 {
-        color: #111827 !important;
+        color: #111827 !important; /* Preto */
         font-weight: 700 !important;
         letter-spacing: -0.02em;
     }
@@ -142,35 +142,37 @@ st.markdown("""
     button[data-baseweb="tab"] {
         font-size: 13px !important;
         padding: 8px 12px !important;
-        color: #334155 !important;
+        color: #334155 !important; /* Texto cinza escuro nas abas */
     }
 
-    /* RODAPÉ LATERAL PROFISSIONAL */
+    /* RODAPÉ LATERAL CORRIGIDO */
     .sidebar-footer {
-        margin-top: 20px;
+        margin-top: 30px;
         padding-top: 15px;
         border-top: 1px solid #CBD5E1;
         font-size: 11px;
-        color: #334155;
+        color: #1F2937; /* Cinza bem escuro */
         line-height: 1.5;
     }
     
     .sidebar-footer strong {
-        color: #111827;
+        color: #111827; /* Preto forte para títulos */
         font-weight: 700;
     }
 
+    /* Link discreto para reportar erro */
     .bug-report {
         font-size: 11px;
         color: #64748B;
         text-decoration: none;
-        margin-top: 10px;
-        display: inline-block;
+        margin-top: 15px; /* Mais espaço antes do link */
+        display: block; 
         border-bottom: 1px dotted #64748B;
+        width: fit-content;
     }
     .bug-report:hover {
-        color: #0F766E;
-        border-bottom: 1px solid #0F766E;
+        color: #DC2626; /* Fica vermelho ao passar o mouse */
+        border-bottom: 1px solid #DC2626;
     }
     
     .warning-text {
@@ -181,7 +183,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. BACKEND ---
+# --- 4. BACKEND (SUA VERSÃO ESTÁVEL) ---
 
 TODAS_ENZIMAS = sorted([str(e) for e in CommOnly])
 
@@ -299,6 +301,7 @@ def calcular_pcr_biologico(sequencia, fwd_seq, rev_seq, eh_circular):
     
     if len(fwd) < 10 or len(rev) < 10: return [], False
 
+    # Seed 15pb
     SEED_SIZE = 15
     fwd_seed = fwd[-SEED_SIZE:] if len(fwd) > SEED_SIZE else fwd
     rev_seed = rev[-SEED_SIZE:] if len(rev) > SEED_SIZE else rev
@@ -381,16 +384,15 @@ with st.sidebar:
         st.session_state.lang = novo_lang
         st.rerun()
 
-    # RODAPÉ LATERAL - Reportar Erro no FINAL
+    # RODAPÉ LATERAL CORRIGIDO (TEXTO PRETO, ORDEM CERTA)
     st.markdown(f"""
     <div class="sidebar-footer">
-        <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong><br>
-        <div style="margin-top: 8px;">
-            <strong>{TEXTS['ack_title'][lang]}</strong><br>
-            FAPESP<br>
-            Universidade de São Paulo (USP)<br>
-            Instituto Butantan
-        </div>
+        <strong>{TEXTS['created_by'][lang]} Elton Ostetti</strong>
+        <br><br>
+        <strong>{TEXTS['ack_title'][lang]}</strong><br>
+        <span style="color: #374151;">FAPESP</span><br>
+        <span style="color: #374151;">Universidade de São Paulo (USP)</span><br>
+        <span style="color: #374151;">Instituto Butantan</span>
         <br>
         <a class="bug-report" href="mailto:e.ostetti.proppg@proppg.butantan.gov.br?subject=Bug%20Report%20BioSpark">
             {TEXTS['report_bug'][lang]}
@@ -535,6 +537,7 @@ if any(dados_para_plotar):
     else: 
         bg_color = 'white'; text_color = 'black'; color_sample = 'black'; color_ladder = 'black'
 
+    # CORREÇÃO: Começa em 25 para não cortar o 100pb
     min_view = 25 
     max_view = 25000 / (agarose * 0.8)
     
@@ -572,7 +575,7 @@ if any(dados_para_plotar):
                 y=[tam_aparente, tam_aparente],
                 mode='lines+markers',
                 line=dict(color=cor_atual, width=width),
-                marker=dict(color=cor_atual, size=width, symbol='circle'), 
+                marker=dict(color=cor_atual, size=width, symbol='circle'),
                 opacity=opacity,
                 showlegend=False,
                 hoverinfo='text',
